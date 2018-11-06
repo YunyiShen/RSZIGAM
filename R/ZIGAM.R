@@ -43,14 +43,14 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   if (is.function(family))
     family <- family()
   if(family$family == "poisson") {
-    d.V <- function(mu) rep.int(1, length(mu))
+    d.V <- function(mu) rep.int(1, length(mu)) # the parameters as an exponential family 
     d.eta.mu <- function(mu) -1/(mu^2)
     d.f0 <- function(mu) -exp(-mu)
     den <- dpois; disp <- 1; est.disp <- FALSE
     size <- rep.int(1, n)
     loglikfun <- function(y, mu, p) {
       e <- as.numeric(y!=0)
-      sum((1-e)*log(1-p+p*dpois(y,mu,log=FALSE))+e*(log(p)+dpois(y,mu,log=TRUE)))
+      sum((1-e)*log(1-p+p*dpois(y,mu,log=FALSE))+e*(log(p)+dpois(y,mu,log=TRUE)))# likelihood with zero inflated
     }
   }
   else if(family$family == "binomial") {
@@ -80,13 +80,16 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   p <- rep(0.7, n)
   psi <- p*den(y, mu)/(p*den(y, mu)+(1-p)*(y==0))
   norm <- 1; repli <- 0
-  while( norm > conv.crit & repli < maxiter) {
+  while( norm > conv.crit & repli < maxiter) { # this is the EM-PIRLS process hopefully 
     
-    psi <- p*den(y, mu)/(p*den(y, mu)+(1-p)*(y==0))
+    psi <- p*den(y, mu)/(p*den(y, mu)+(1-p)*(y==0)) # this is E step, meanwhile, it calculated the weight for PIRLS
+	# seems we need another E step here regarding the Latent N
+	
+	# then M step
     G1 <- gam(fm1, family=family, fit=FALSE, data=data, ...)
     G2 <- gam(fm2, family=quasibinomial, fit=FALSE, data=data, ...)
-    G1$w <- psi*size
-    fit.gam <- gam(G = G1)
+    G1$w <- psi*size # change the weight in this iter, weight for the data is actually psi, see eq.9a in the technical report
+    fit.gam <- gam(G = G1) # seems this is the PIRLS work, done by gam 
     fit.lr <- gam(G = G2)
     b <- coef(fit.gam)
     g <- coef(fit.lr)
