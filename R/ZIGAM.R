@@ -30,7 +30,7 @@ zigam <- function(formula, maxiter = 20, conv.crit = 1e-3,
 ## ZIGAM.dis.R
 
 ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
-                      size = NULL, family = poisson(), data=list(), ...) 
+                      size = NULL, family = poisson(), data=list(), N, ...) 
 {
   
   require(mgcv)
@@ -83,7 +83,15 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   while( norm > conv.crit & repli < maxiter) { # this is the EM-PIRLS process hopefully 
     
     psi <- p*den(y, mu)/(p*den(y, mu)+(1-p)*(y==0)) # this is E step, meanwhile, it calculated the weight for PIRLS
-	# seems we need another E step here regarding the Latent N
+	# seems we need another E step here regarding the Latent N, and P, using different weight to deal with it:
+	for(n in 0:N){
+	n_pois = n * size
+	
+	
+	
+	
+	
+	}
 	
 	# then M step
     G1 <- gam(fm1, family=family, fit=FALSE, data=data, ...)
