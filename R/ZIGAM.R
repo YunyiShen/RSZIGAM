@@ -1,3 +1,19 @@
+# special helper functions
+
+liklihood.fnr = function(n,det.vec,lambda,p.vec){
+	det.p = prod(dbinom(det.vec,rep(n,length(det.vec)),p.vec))
+	pois  = dpois(n,lambda)
+	return(det.p * pois)
+}
+
+post.weight_helper = function(n,det.vec, lambda,p.vec,psi,N){
+	Ns = as.matrix( min(det.vec):N )
+	fns = apply(Ns,2,likelihood.fnr,det.vec,lambda,p.vec)
+	Zr = psi*sum(fns) + (1-psi) * (sum(det.vec)==0)
+	fn = likelihood.fnr(n,det.vec,lambda,p.vec)
+	return(psi*fn/Zr)
+}
+
 # These are modified from zigam(COZIGAM)
 
 zigam <- function(formula, maxiter = 20, conv.crit = 1e-3,
@@ -30,53 +46,51 @@ zigam <- function(formula, maxiter = 20, conv.crit = 1e-3,
 ## ZIGAM.dis.R
 
 ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
-                      size = NULL, family = poisson(), data=list(), N, ...) 
+                      size = NULL, data=list(), N,...) # data should contains detmat as det.1,det.2,det.3 etc, period should be detection period number data's formate: data$detmat should be a matrix with nrow = nsite, ncol = nperiod, data$envX, which is the second should be the environmental data at each site, the else, say data$detX.1 data$detX.2 should be the detection varible at all sites and time period 1, 2...etc., colnames should be consistent
 {
   
   require(mgcv)
-  gf <- interpret.gam(formula)
-  y <- eval(parse(text=gf$response), envir=data)
-  n <- length(y)
+  gf.N.psi <- interpret.gam(formula)
+  #gf.psi <- interpret.gam(formula)
+  gf.det <- interpret.gam(formula.det)
   
-  if (is.character(family))
-    family <- eval(parse(text = family))
-  if (is.function(family))
-    family <- family()
-  if(family$family == "poisson") {
-    d.V <- function(mu) rep.int(1, length(mu)) # the parameters as an exponential family 
-    d.eta.mu <- function(mu) -1/(mu^2)
-    d.f0 <- function(mu) -exp(-mu)
-    den <- dpois; disp <- 1; est.disp <- FALSE
-    size <- rep.int(1, n)
-    loglikfun <- function(y, mu, p) {
+  #y <- eval(parse(text=gf$response), envir=data)
+  n.site <- nrow(data$detmat)
+  period = ncol(data$detmat)
+  family = poisson()
+  
+  d.V <- function(mu) rep.int(1, length(mu)) # the parameters as an exponential family 
+  d.eta.mu <- function(mu) -1/(mu^2)
+  d.f0 <- function(mu) -exp(-mu)
+  den <- dpois; disp <- 1; est.disp <- FALSE
+  size <- rep.int(1, n)
+  loglikfun <- function(y, mu, p) {
       e <- as.numeric(y!=0)
       sum((1-e)*log(1-p+p*dpois(y,mu,log=FALSE))+e*(log(p)+dpois(y,mu,log=TRUE)))# likelihood with zero inflated
     }
-  }
-  else if(family$family == "binomial") {
-    if(missing(size)) stop("number of trials must be specified for binomial data")
-    d.V <- function(mu) 1-2*mu
-    d.eta.mu <- function(mu) (2*mu-1)/(mu^2*(1-mu)^2)
-    d.f0 <- function(mu) -n*(1-mu)^(n-1)
-    den <- function(y, mu) dbinom(y*size, size, mu)
-    disp <- 1; est.disp <- FALSE
-    loglikfun <- function(y, mu, p) {
-      e <- as.numeric(y!=0)
-      sum((1-e)*log(1-p+p*dbinom(y*size,size,mu,log=FALSE))+e*(log(p)+dbinom(y*size,size,mu,log=TRUE)))
-    }
-  }
-  else stop("family not recognized")
+
   
   variance <- family$variance
   linkinv <- family$linkinv
   linkfun <- family$linkfun
   mu.eta <- family$mu.eta
   
-  fm1 <- as.formula(sub(gf$response,"y",deparse(formula)))
-  fm2 <- as.formula(sub(gf$response,"psi",deparse(formula)))
   
-  if(family$family == "binomial") mu <- pmin(pmax(y, 0.01), 0.99)
-  else mu <- pmax(y, 0.01)
+  fm.psi <- as.formula(sub(gf.N.psi$response,"psi",deparse(formula)))
+  fm.n <- as.formula(sub(gf.N.psi$response,"n",deparse(formula)))
+  fm.p <- as.formula(sub(gf.det$response,"y",deparse(formula)))
+  
+  # forming data for detgams:
+  detdata = list()
+  for(i in 1:period){
+    y = data$detmat[,i]
+    detXtemp = data[[i+2]]
+	detdata[[i]]=data.frame(y,data$envX,detXtemp)
+  }
+  ## stop here 11/14/2018 13:17 for review MATH632
+  
+  
+  mu <- pmax(y, 0.01)
   p <- rep(0.7, n)
   psi <- p*den(y, mu)/(p*den(y, mu)+(1-p)*(y==0))
   norm <- 1; repli <- 0
