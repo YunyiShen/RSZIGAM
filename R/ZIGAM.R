@@ -76,41 +76,65 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   mu.eta <- family$mu.eta
   
   
-  fm.psi <- as.formula(sub(gf.N.psi$response,"psi",deparse(formula)))
+  fm.psi <- as.formula(sub(gf.N.psi$response,"quasi.psi",deparse(formula)))
   fm.n <- as.formula(sub(gf.N.psi$response,"n",deparse(formula)))
   fm.p <- as.formula(sub(gf.det$response,"y",deparse(formula)))
   
   # forming data for detgams:
   detdata = list()
-  for(i in 1:period){
+  for(i in 1:period){ # ugly for, but I do not have better idea yet.
     y = data$detmat[,i]
     detXtemp = data[[i+2]]
 	detdata[[i]]=data.frame(y,data$envX,detXtemp)
   }
-  ## stop here 11/14/2018 13:17 for review MATH632
+  ## stop here 11/14/2018 13:17 to review MATH632
+  ## restart here 11/14/2018 22:20 give up MATH632
   
-  
-  mu <- pmax(y, 0.01)
-  p <- rep(0.7, n)
-  psi <- p*den(y, mu)/(p*den(y, mu)+(1-p)*(y==0))
-  norm <- 1; repli <- 0
+  lambda <- pmax(apply(detmat,1,mean), 0.01) # Poisson lambda
+  psi <- rep(0.7, nsite) # occupancy psi
+  p.vec = 0.1*(detmat>=0) # detction p
+  quasi.psi = matrix(0,nrow = nsite,ncol=1)
+  for(i in 1:nsite){ # ugly for again, but I do not have better idea yet.
+	nvec = max(detmat[i,]):N
+	gr = apply(as.matrix(nvec),2,liklihood.fnr,det.vec = detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
+    gr = sum(gr)
+	quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(detmat[,i]!=0)>0))
+  }
+  norm <- 1; 
+  repli <- 0
   while( norm > conv.crit & repli < maxiter) { # this is the EM-PIRLS process hopefully 
     
-    psi <- p*den(y, mu)/(p*den(y, mu)+(1-p)*(y==0)) # this is E step, meanwhile, it calculated the weight for PIRLS
+    #psi <- p*den(y, mu)/(p*den(y, mu)+(1-p)*(y==0)) # this is E step, meanwhile, it calculated the weight for PIRLS
+	for(i in 1:nsite){ # again, to get quasi data of occupancy status, which is just posterior probability given all parameters
+	    nvec = max(detmat[i,]):N
+	    gr = apply(as.matrix(nvec),2,liklihood.fnr,det.vec = detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
+        gr = sum(gr)
+	    quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(detmat[,i]!=0)>0))
+    }
 	# seems we need another E step here regarding the Latent N, and P, using different weight to deal with it:
+	fit.p = list()
+	p.count = 0
+	fit.lambda = list()
+	lambda.count = 0
 	for(n in 0:N){
-	n_pois = n * size
-	
-	
-	
-	
-	
+	   wg = matrix(0,nsite,1)
+	   for(i in 1:nsite){
+	     wg[i] = post.weight_helper(n,detmat[i,], lambda[i],p[,i],psi[i],N)
+	   }
+
+	   Gp = lapply(detdata,function(data1,fm, family, size, wg){
+	       temp = gam(fm,family=family,fit = F, size=size,data = data1);
+	       temp$w = wg;
+	       return(temp)
+	       },fm=fm.p, family=binomial, size=n,wg = wg)
+	   fit.p = lapply(Gp,function(GG){gam(G=GG)})
+	# stop here 11/14/2018 23:40 not sure how to combine results under different n, they should converge but intuitively they cannot
 	}
 	
 	# then M step
-    G1 <- gam(fm1, family=family, fit=FALSE, data=data, ...)
-    G2 <- gam(fm2, family=quasibinomial, fit=FALSE, data=data, ...)
-    G1$w <- psi*size # change the weight in this iter, weight for the data is actually psi, see eq.9a in the technical report
+    #G1 <- gam(fm1, family=family, fit=FALSE, data=data, ...)
+    G.psi <- gam(fm.psi, family=quasibinomial, fit=FALSE, data=data, ...)
+    #G1$w <- psi*size # change the weight in this iter, weight for the data is actually psi, see eq.9a in the technical report
     fit.gam <- gam(G = G1) # seems this is the PIRLS work, done by gam 
     fit.lr <- gam(G = G2)
     b <- coef(fit.gam)
