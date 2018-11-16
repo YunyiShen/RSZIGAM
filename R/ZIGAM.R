@@ -78,7 +78,7 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   
   fm.psi <- as.formula(sub(gf.N.psi$response,"quasi.psi",deparse(formula)))
   fm.lambda <- as.formula(sub(gf.N.psi$response,"quasi.lambda",deparse(formula)))
-  fm.p <- as.formula(sub(gf.det$response,"y",deparse(formula)))
+  fm.p <- as.formula(sub(gf.det$response,"quasi.y",deparse(formula)))
   
   # forming data for detgams:
   detdata = list()
@@ -95,6 +95,7 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   p.vec = 0.1*(detmat>=0) # detction p
   quasi.psi = matrix(runif(nsite)>0.5,nrow = nsite,ncol=1)
   quasi.lambda = pmax(apply(detmat,1,mean), 0.01) 
+  quasi.y = detmat
   for(i in 1:nsite){ # ugly for again, but I do not have better idea yet.
 	nvec = max(detmat[i,]):N
 	gr = apply(as.matrix(nvec),2,liklihood.fnr,det.vec = detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
@@ -112,24 +113,27 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
 	    gr = apply(as.matrix(nvec),2,liklihood.fnr,det.vec = detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
         gr = sum(gr)
 	    quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(detmat[,i]!=0)>0))
+		
 		# quasi data for Poisson lambda
 		wg_tep = apply(as.matrix(nvec),2, post.weight_helper,detmat[i,], lambda[i],p[,i],psi[i],N)
 		wg.lambda[i] = sum(wg_tep)
 		quasi.lambda[i] = sum((0:N) * wg_tep)/wg.lambda[i]
+		
+		# quasi data for detections
+		wg.p = sum((0:N) * wg_tep)/N
+		quasi.y[i,] = detmat[i,] * (N/quasi.lambda[i])	
     }
-	# seems we need another E step here regarding the Latent N, and P, using different weight to deal with it:
-	
-	
-	   
-	# stop here 11/14/2018 23:40 not sure how to combine results under different n, they should converge but intuitively they cannot
-	
-	# then M step
-    #G1 <- gam(fm1, family=family, fit=FALSE, data=data, ...)
+	# Now fit the det GAMs should have w models
+	G.det = list()
+	for (i in 1:period){
+	    G.det[[i]] = gam(fm.p,family = quasibinomial,fit=FALSE,data = data.frame(quasi.y=quasi.y[,i]),detdata[[i]][,-1],weight = wg.p,...)
+	}
     G.psi <- gam(fm.psi, family=quasibinomial, fit=FALSE, data=data, ...)
     G.lambda = gam(fm.lambda,family = quasipoisson, fit = FALSE,data=data)
 	G.lambda$w = wg.lambda # change the weight in this iter, weight for the data is actually psi, see eq.9a in the technical report
     fit.psi <- gam(G = G.psi) # seems this is the PIRLS work, done by gam 
     fit.lambda <- gam(G = G.lambda)
+	fit.p = lapply(G.det,gam)
     b <- coef(fit.gam)
     g <- coef(fit.lr)
     
