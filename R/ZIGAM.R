@@ -126,24 +126,32 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
 	# Now fit the det GAMs should have w models
 	G.det = list()
 	for (i in 1:period){
-	    G.det[[i]] = gam(fm.p,family = quasibinomial,fit=FALSE,data = data.frame(quasi.y=quasi.y[,i]),detdata[[i]][,-1],weight = wg.p,...)
+	    G.det[[i]] = gam(fm.p,family = quasibinomial,fit=FALSE,data = data.frame(quasi.y=quasi.y[,i]),detdata[[i]][,-1],weight = wg.p,size=N,...)
 	}
-    G.psi <- gam(fm.psi, family=quasibinomial, fit=FALSE, data=data, ...)
-    G.lambda = gam(fm.lambda,family = quasipoisson, fit = FALSE,data=data)
+    G.psi <- gam(fm.psi, family=quasibinomial, fit=FALSE, data=data.frame(quasi.psi,data$envX), ...)
+    G.lambda = gam(fm.lambda,family = quasipoisson, fit = FALSE,data=data.frame(quasi.psi,data$envX),...)
 	G.lambda$w = wg.lambda # change the weight in this iter, weight for the data is actually psi, see eq.9a in the technical report
     fit.psi <- gam(G = G.psi) # seems this is the PIRLS work, done by gam 
     fit.lambda <- gam(G = G.lambda)
 	fit.p = lapply(G.det,gam)
-    b <- coef(fit.gam)
-    g <- coef(fit.lr)
+    beta.psi <- coef(fit.psi)
+    beta.lambda = coef(fit.lambda)
+	beta.p = lapply(fit.p,coef)
     
-    mu.old <- mu; p.old <- p
-    mu <- fit.gam$fitted
-    p <- fit.lr$fitted
-    norm <- max(abs(p-p.old), sum((mu-mu.old)^2))
+    lambda.old <- lambda
+	p.old <- p
+	psi.old = psi
+	
+	lambda = fit.lambda$fitted
+	psi = fit.psi$fitted
+	p = unlist(lapply(fit.p,function(L){L$fitted}),use.names = FALSE)
+	
+    norm <- max(abs(p-p.old), sum((lambda-lambda.old)^2),abs(psi-psi.old))
     repli <- repli + 1
     cat("iteration =", repli, "\t", "norm =", norm, "\n")
   }
+ ## stop here for pokemon 11/16/2018 15:00
+  
   
   b1 <- fit.gam$coef; b2 <- fit.lr$coef
   np1 <- length(b1); np2 <- length(b2)

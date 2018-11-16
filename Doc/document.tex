@@ -79,7 +79,7 @@ We first write down the total probability assuming knowing occupancy status $z$ 
 In E step of EM algorithm, we need $P(n,z|\vec{d})$, which need to sum all n up, here, we truncated it with some large N.
 \begin{equation}
 	\begin{aligned}
-	P(n,z|\vec{d})&=\frac{P(n,z,\vec{d})}{\sum_{n=max(d_{j})}^{N}\sum_{z=0}^{1}P(n,z,\vec{d})}\\
+	P(n,z|\vec{d})&=\frac{P(n,z,\vec{d})}{\sum_{n=max(d_{j})}^{zN}\sum_{z=0}^{1}P(n,z,\vec{d})}\\
 	&=\frac{(\psi f(n,\vec{d}|\theta))^{z}(I_{\vec{d}=0}(1-\psi))^{1-z}}{\psi \sum_{n=max(d_{j})}^{N}f(n,d|\theta)+(1-\psi)I_{\vec{d}=0}}
 	\end{aligned}
 \end{equation}
