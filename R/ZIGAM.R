@@ -81,19 +81,21 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   fm.p <- as.formula(sub(gf.det$response,"quasi.y",deparse(formula)))
   
   # forming data for detgams:
-  detdata = list()
+  detdata = matrix(nrow = 1,ncol = (1+ncol(data$envX)+ncol(data[[3]])))
+  detdata = detdata[-1,]
   for(i in 1:period){ # ugly for, but I do not have better idea yet.
     y = data$detmat[,i]
     detXtemp = data[[i+2]]
-	detdata[[i]]=data.frame(y,data$envX,detXtemp)
+	detdata = rbind(detdata, data.frame(y,data$envX,detXtemp))
   }
   ## stop here 11/14/2018 13:17 to review MATH632
   ## restart here 11/14/2018 22:20 give up MATH632
   
   lambda <- pmax(apply(detmat,1,mean), 0.01) # Poisson lambda
   psi <- rep(0.7, nsite) # occupancy psi
-  p.vec = 0.1*(detmat>=0) # detction p
-  quasi.psi = matrix(runif(nsite)>0.5,nrow = nsite,ncol=1)
+  p.vec = ( 0.1*(detmat>=0)) # detction p
+  p = matrix((p.vec),nrow = nsite*period,ncol = 1)
+  # quasi.psi = matrix(runif(nsite)>0.5,nrow = nsite,ncol=1)
   quasi.lambda = pmax(apply(detmat,1,mean), 0.01) 
   quasi.y = detmat
   for(i in 1:nsite){ # ugly for again, but I do not have better idea yet.
@@ -104,9 +106,12 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   }
   norm <- 1; 
   repli <- 0
+  
+  wg.lambda = matrix(0,nsite,1)
+  wg.p = wg.lambda
   while( norm > conv.crit & repli < maxiter) { # this is the EM-PIRLS process hopefully 
     
-	wg.lambda = matrix(0,nsite,1)
+	
 	for(i in 1:nsite){ # again, to get quasi data of occupancy status, which is just posterior probability given all parameters
 	    nvec = max(detmat[i,]):N
 		# quasi data for occupancy status
@@ -120,23 +125,24 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
 		quasi.lambda[i] = sum((0:N) * wg_tep)/wg.lambda[i]
 		
 		# quasi data for detections
-		wg.p = sum((0:N) * wg_tep)/N
+		wg.p[i] = sum((0:N) * wg_tep)/N
 		quasi.y[i,] = detmat[i,] * (N/quasi.lambda[i])	
     }
-	# Now fit the det GAMs should have w models
-	G.det = list()
-	for (i in 1:period){
-	    G.det[[i]] = gam(fm.p,family = quasibinomial,fit=FALSE,data = data.frame(quasi.y=quasi.y[,i]),detdata[[i]][,-1],weight = wg.p,size=N,...)
-	}
-    G.psi <- gam(fm.psi, family=quasibinomial, fit=FALSE, data=data.frame(quasi.psi,data$envX), ...)
+	quasi.y = matrix(quasi.y,nrow = length(quasi.y),ncol=1,byrow = FALSE)
+	
+	# Now fit the det GAMs, should have w models
+	
+	G.psi <- gam(fm.psi, family = quasibinomial, fit=FALSE, data=data.frame(quasi.psi,data$envX), ...)
     G.lambda = gam(fm.lambda,family = quasipoisson, fit = FALSE,data=data.frame(quasi.psi,data$envX),...)
 	G.lambda$w = wg.lambda # change the weight in this iter, weight for the data is actually psi, see eq.9a in the technical report
-    fit.psi <- gam(G = G.psi) # seems this is the PIRLS work, done by gam 
+    G.det = gam(fm.p,family = quasibinomial, fit=FALSE, data=data.frame(quasi.y,detdata[,-1]),size = N,...)
+    G.det$w = rep(wg.p,period)
+	fit.psi <- gam(G = G.psi) # seems this is the PIRLS work, done by gam 
     fit.lambda <- gam(G = G.lambda)
-	fit.p = lapply(G.det,gam)
+	fit.p = (G = G.det,gam)
     beta.psi <- coef(fit.psi)
     beta.lambda = coef(fit.lambda)
-	beta.p = lapply(fit.p,coef)
+	beta.p = coef(fit.p)
     
     lambda.old <- lambda
 	p.old <- p
@@ -144,7 +150,8 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
 	
 	lambda = fit.lambda$fitted
 	psi = fit.psi$fitted
-	p = unlist(lapply(fit.p,function(L){L$fitted}),use.names = FALSE)
+	p = fit.p$fitted
+	p.vec = matrix(p,nrow = nsite,ncol = period)
 	
     norm <- max(abs(p-p.old), sum((lambda-lambda.old)^2),abs(psi-psi.old))
     repli <- repli + 1
