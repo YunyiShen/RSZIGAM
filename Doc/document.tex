@@ -1,0 +1,154 @@
+\documentclass[]{article}
+\usepackage{indentfirst}
+\usepackage{amsmath}
+\usepackage{geometry}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\geometry{a4paper,scale=0.7}
+
+\title{ZIGAM with Repeated Sampling in a Short Period}
+\author{Yunyi SHEN}
+\begin{document}
+\maketitle
+\section{Model Setting}
+\subsection{Combined Distribution of Latent Population Size and Detections}
+
+\subsection{Proof the Distribution of Latent n and Detections d is in Exponential Family}
+\begin{proof}
+First, set $(n,\vec{d})$ is the latent population and detection vectors at site i. I intend to prove that the distribution of this vector is with in exponential family witch has form:
+\begin{equation}
+	f(y|\theta)=b(y)exp(\eta^{T}T(y)-a(\eta))
+\end{equation}
+Assume detections given latent population n were binomial distributed with parameter $p_{j}$, thus:
+\begin{equation}
+	\begin{aligned}
+		P(\vec{d}|n)&=\prod_{j=1}^{w}\binom{n}{d_{j}}p_{j}^{d_{j}}(1-p_{j})^{d_{j}}\\
+		&=\prod_{j=1}^{w}\binom{n}{d_{j}}exp(\sum_{j=1}^{w}d_{j}log\frac{p_{j}}{1-p_{j}}+n\sum_{j=1}^{w}log(1-p_{j}))
+	\end{aligned}
+\end{equation}
+which showed that binomial distribution given n belongs to exponential family.
+
+Then assume latent population was Poisson distributed with rate $\lambda$
+\begin{equation}
+	\begin{aligned}
+		P(n|\theta)&=e^{-\lambda}\frac{\lambda^{n}}{n!}\\
+		&=\frac{1}{n!}exp(nlog(\lambda)-\lambda)
+	\end{aligned}
+\end{equation}
+Thus the total probability contains the latent and detections is given by:
+\begin{equation}
+	\begin{aligned}
+		P(n,\vec{d}|\theta)&=P(d|n,\theta)P(n|\theta)\\
+		&=\frac{1}{n!}\prod_{j=1}^{w}\binom{n}{d_{j}}exp(\sum_{j=1}^{w}d_{j}log\frac{p_{j}}{1-p_{j}}+n\sum_{j=1}^{w}log(1-p_{j}))exp(nlog(\lambda)-\lambda)\\
+		&=\frac{1}{n!}\prod_{j=1}^{w}\binom{n}{d_{j}}exp[\sum_{j=1}^{w}d_{j}log\frac{p_{j}}{1-p_{j}}+n(\sum_{j=1}^{w}log(1-p_{j})+log(\lambda))-\lambda]\\
+		&=\frac{1}{n!}\prod_{j=1}^{w}\binom{n}{d_{j}}exp(\eta^{T}(n,\vec{d})-\lambda)
+	\end{aligned}
+\end{equation}
+in which 
+\[
+\eta^{T}=(\sum_{j=1}^{w}log(1-p_{j})+log(\lambda),log\frac{\vec{p}}{1-\vec{p}})
+\]
+
+\[
+T(y)=y
+\]
+$\lambda$ can be calculated using $\eta$ since it contains all $p_{j}$ and $\lambda$ itself.
+Later on, we note this function as
+\[
+f(n,d|\theta)
+\]
+\end{proof}
+
+\subsection{Zero Inflate}
+
+\section{Model Estimation}
+\subsection{EM Algorithm to Deal with the Missing Population Size and Occupancy}
+Since we are missing observation of Latent Population Size $n$ and Occupancy status $z$, we can not directly obtain the MLE for GAMs. Thus here we proposed an EM algorithm to deal with missing observations.
+
+Instead of maximize log likelihood directly EM algorithm maximize the lower bound of the log likelihood every iteration. In each iteration, this algorithm contains two steps, Expectation(E) step and Maximization(M) step. In the E step, the algorithm will take expected value of log likelihood under the posterior distribution of missing observations, and in M step, maximize this expected value. The algorithm will iterate until estimation converges. 
+
+\subsubsection{E-step}
+We first write down the total probability assuming knowing occupancy status $z$ and latent population size $n$:
+\begin{equation}
+	\begin{aligned}
+	P(\vec{d},n,z)&=[\psi Pois(n|\lambda)\prod_{j=1}^{w}Bin(d_{j}|n,p_{j})]^{z}(I_{\vec{d}=0}(1-\psi))^{1-z}\\
+	&=(\psi f(n,\vec{d}|\theta))^{z}(I_{\vec{d}=0}(1-\psi))^{1-z}
+	\end{aligned}
+\end{equation}
+In E step of EM algorithm, we need $P(n,z|\vec{d})$, which need to sum all n up, here, we truncated it with some large N.
+\begin{equation}
+	\begin{aligned}
+	P(n,z|\vec{d})&=\frac{P(n,z,\vec{d})}{\sum_{n=max(d_{j})}^{N}\sum_{z=0}^{1}P(n,z,\vec{d})}\\
+	&=\frac{(\psi f(n,\vec{d}|\theta))^{z}(I_{\vec{d}=0}(1-\psi))^{1-z}}{\psi \sum_{n=max(d_{j})}^{N}f(n,d|\theta)+(1-\psi)I_{\vec{d}=0}}
+	\end{aligned}
+\end{equation}
+Take expectation of logL of total likelihood under $r^{th}$ $\theta$ given by summing every z and n up:
+\begin{equation}
+	\begin{aligned}
+	\mathbb{E}(l_{p}|\vec{d},\theta^{[r]})=\sum_{sites}\frac{\sum_{n}^{N}\psi^{[r]}f(n,\vec{d}|\theta^{[r]})log[\psi f(n,\vec{d}|\theta)]+(1-\psi^{[r]})I_{\vec{d}=0}log[(1-\psi)I_{\vec{d}=0}]}{\sum_{n}^{N}\psi^{[r]}f(n,\vec{d}|\theta^{[r]})+(1-\psi^{[r]})I_{\vec{d}=0}}
+	\end{aligned}
+\end{equation}
+This involves large number of GAMs to be maximized during M step, but still can be solved via RILS
+
+Later on, we note the a normalizing constant given $\theta^{[r]}$ to be:
+\[
+\sum_{n}^{N}\psi^{[r]}f(n,\vec{d}|\theta^{[r]})+(1-\psi^{[r]})I_{\vec{d}=0}=Z^{[r]}
+\]
+
+and another constant:
+\[
+\sum_{n}^{N}f(n,\vec{d}|\theta^{[r]})=g^{[r]}
+\]
+
+and note:
+\[
+f(n,\vec{d}|\theta^{[r]})=f^{[r]}_{\vec{d}}(n)
+\]
+
+\subsubsection{M step, RILS Algorithm}
+We get derivative of $E_{l}$ and $\psi_{i}$ at site i
+\begin{equation}
+	\frac{\partial E_{l}}{\partial \psi_{i}}=\frac{\psi_{i}^{[r]}g_{i}^{[r]}}{\psi_{i}^{[r]}g_{i}^{[r]}+(1-\psi_{i}^{[r]})I_{\vec{d_{i}}=0}}-\psi_{i}
+\end{equation}
+Involves the first weighted GAM regarding occupancy rate $\psi$
+
+Then get derivative of $f_{\vec{d}}(n)$ at site i
+\begin{equation}
+\frac{\partial E_{l}}{\partial f_{\vec{d_{i}}}(n)}=\frac{\psi_{i}^{[r]}}{Z^{[r]}}\sum_{n=0}^{N}\frac{f^{[r]}_{\vec{d_{i}}}(n)}{f_{\vec{d_{i}}}(n)}
+\end{equation}
+Now we can get the total derivative of the expected value of logL:
+\begin{equation}
+	\begin{aligned}
+	\frac{\partial E_{l}}{\partial \beta_{k}}&=\sum_{i}\frac{\partial E_{l}}{\partial f_{\vec{d_{i}}}(n)}\frac{\partial f_{\vec{d_{i}}}(n)}{\partial \beta_{k}}+\sum_{i}\frac{\partial E_{l}}{\partial \psi_{i}}\frac{\partial \psi_{i}}{\partial \beta_{k}}\\
+	&=\sum_{i}\frac{\psi_{i}^{[r]}}{Z^{[r]}}\sum_{n=0}^{N}f^{[r]}_{\vec{d_{i}}}(n)\frac{\partial log(f_{\vec{d_{i}}}(n))}{\partial \beta_{k}}+\sum_{i}\frac{\partial E_{l}}{\partial \psi_{i}}\frac{\partial \psi_{i}}{\partial \beta_{k}}\\
+	&=\sum_{n=0}^{N}\sum_{i}\frac{\psi_{i}^{[r]}}{Z^{[r]}}f^{[r]}_{\vec{d_{i}}}(n)\frac{\partial log(f_{\vec{d_{i}}}(n))}{\partial \beta_{k}}+\sum_{i}\frac{\partial E_{l}}{\partial \psi_{i}}\frac{\partial \psi_{i}}{\partial \beta_{k}}\\
+	\end{aligned}
+\end{equation}
+Further, we derive the setting of RILS for n and p:
+\begin{equation}
+	\begin{aligned}
+	&\sum_{n=0}^{N}\sum_{i}\frac{\psi_{i}^{[r]}}{Z^{[r]}}f^{[r]}_{\vec{d_{i}}}(n)\frac{\partial log(f_{\vec{d_{i}}}(n))}{\partial \beta_{k}}\\
+	=&\sum_{n=0}^{N}\sum_{i}[\frac{\psi_{i}^{[r]}}{Z^{[r]}}f^{[r]}_{\vec{d_{i}}}(n)\frac{\partial logPois(n,\lambda_{i})}{\partial \beta_{k}}+\sum_{j=1}^{w}\frac{\psi_{i}^{[r]}}{Z^{[r]}}f^{[r]}_{\vec{d_{i}}}(n)\frac{\partial logBin(p_{ij},n)}{\partial \beta_{k}}]\\
+	\end{aligned}
+\end{equation}
+Note that:
+\[
+w_{i}^{r}(n)=\frac{\psi_{i}^{[r]}}{Z^{[r]}}f^{[r]}_{\vec{d_{i}}}(n)
+\]
+First deal with $\lambda$ which is easier:
+\begin{equation}
+	\begin{aligned}
+	\sum_{n=0}^{N}\sum_{i}w_{i}^{[r]}(n)\frac{\partial logPois(n,\lambda_{i})}{\partial \beta_{k}}&=\sum_{i}\frac{\sum_{n=0}^{N}w_{i}^{[r]}(n)(n-\mu_{\lambda i})}{\phi V(\mu_{\lambda i})}\frac{\partial \mu_{\lambda i}}{\partial \beta_{k}}\\
+	&=\sum_{i}[\sum_{n=0}^{N}w_{i}^{[r]}(n)](\frac{\sum_{n=0}^{N}w_{i}^{[r]}(n)n}{\sum_{n=0}^{N}w_{i}^{[r]}(n)}-\mu_{\lambda i})\frac{1}{\phi V(\mu_{\lambda i})}\frac{\partial \mu_{\lambda i}}{\partial \beta_{k}}
+	\end{aligned}
+\end{equation}
+
+Which is a single quasi-Poisson GAM with weight $\sum_{n=0}^{N}w_{i}^{[r]}(n)$ and pseudo data as weighted average of every possible n.
+
+Then deal with single $p_{ij}$:
+
+
+Each iteration's M-step will fit total $w+2$ weighted GAMs and use the modified IRLS algorithm proposed by Hai Liu and Kung-Sik Chan 2009.
+
+\end{document}
