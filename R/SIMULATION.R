@@ -1,5 +1,5 @@
 # vertual data formation
-
+source("ZIGAM.R")
 meshgrid = function (xrange, yrange){
   ncol = length(xrange)
   nrow = length(yrange)
@@ -17,7 +17,7 @@ meshgrid = function (xrange, yrange){
 }
 require(e1071)
 
-setwd('E:/UW Lab jobs/Community Assembly/ANN Poisson/vertual data')
+#setwd('E:/UW Lab jobs/Community Assembly/ANN Poisson/vertual data')
 n.site = 30
 n.period = 20
 set.seed(0)
@@ -51,8 +51,18 @@ parameters = data.frame(lambda = lambda,psi = psi,p)
 realpopu = data.frame(N = Ni,occu = !occu.r)
 env = data.frame(env.1,env.2,env.3)
 
-write.csv(parameters,'parameters.csv',row.names = F)
-write.csv(detection,'countingdata.csv',row.names = F)
-write.csv(realpopu,'population.csv',row.names = F)
-write.csv(env,'env.csv',row.names = F)
-write.csv(P.xy[[1]],'detection_coef.csv',row.names = F)
+# write.csv(parameters,'parameters.csv',row.names = F)
+# write.csv(detection,'countingdata.csv',row.names = F)
+# write.csv(realpopu,'population.csv',row.names = F)
+# write.csv(env,'env.csv',row.names = F)
+# write.csv(P.xy[[1]],'detection_coef.csv',row.names = F)
+
+detX = t( matrix(det.1,nrow = 20,ncol = 30))
+data.test = list(detmat = detection,envX=env)
+for(i in 1:n.period + 2){
+  data.test[[i]] = data.frame(det.1 = rep(det.1[i-2],n.site))
+}
+
+
+RSZIGAM.dis(formula=y~(env.1+env.2+env.3), formula.det=y~(env.1+env.2+env.3+det.1) ,maxiter = 300, conv.crit = 1e-3,
+                        size = NULL, data=data.test, N=50,knots = 5) 

@@ -150,21 +150,22 @@ Then deal with single $p_{ij}$:
 \begin{equation}
 	\begin{aligned}
 	\frac{\partial logBin(p_{ij},n)}{\partial \beta_{k}}&=\frac{d_{ij}-np_{ij}}{np_{ij}q_{ij}}\frac{\partial(np_{ij})}{\partial \beta_{k}}\\
-	&=\frac{d_{ij}-\frac{n}{N}Np_{ij}}{Np_{ij}q_{ij}}\frac{\partial(Np_{ij})}{\partial \beta_{k}}\\
-	&=\frac{d_{ij}-\frac{n}{N}\mu_{Np_{ij}}}{V(\mu_{Np_{ij}})}\frac{\partial(\mu_{Np_{ij}})}{\partial \beta_{k}}
+	&=\frac{d_{ij}-np_{ij}}{p_{ij}q_{ij}}\frac{\partial(p_{ij})}{\partial \beta_{k}}\\
+	&=\frac{d_{ij}-n\mu_{p_{ij}}}{V(\mu_{p_{ij}})}\frac{\partial(\mu_{p_{ij}})}{\partial \beta_{k}}
 	\end{aligned}
 \end{equation}
 
 Now it is related to a quasi-Binomial regression with sample size N, set by user.
 \begin{equation}
 	\begin{aligned}
-	\sum_{n}w_{i}^{[r]}(n)\frac{\partial logBin(p_{ij},n)}{\partial \beta_{k}}&=\sum_{n}w_{i}^{[r]}(n)\frac{d_{ij}-\frac{n}{N}\mu_{Np_{ij}}}{V(\mu_{Np_{ij}})}\frac{\partial(\mu_{Np_{ij}})}{\partial \beta_{k}}\\
-	&=\frac{1}{V(\mu_{Np_{ij}})}\frac{\partial(\mu_{Np_{ij}})}{\partial \beta_{k}}\sum_{n}w_{i}^{[r]}(n)(d_{ij}-\frac{n}{N}\mu_{Np_{ij}})\\
-	&=\frac{1}{V(\mu_{Np_{ij}})}\frac{\partial(\mu_{Np_{ij}})}{\partial \beta_{k}}\frac{\sum_{n=0}^{N}nw_{i}^{[r]}(n)}{N}(\frac{N\sum_{n=0}^{N}w_{i}^{[r]}(n)}{\sum_{n=0}^{N}nw_{i}^{[r]}(n)}d_{ij}-\mu_{Np_{ij}})
+	\sum_{n}w_{i}^{[r]}(n)\frac{\partial logBin(p_{ij},n)}{\partial \beta_{k}}
+	&=\sum_{n}w_{i}^{[r]}(n)\frac{d_{ij}-n\mu_{p_{ij}}}{V(\mu_{p_{ij}})}\frac{\partial(\mu_{p_{ij}})}{\partial \beta_{k}}\\
+	&=\frac{1}{V(\mu_{p_{ij}})}\frac{\partial(\mu_{p_{ij}})}{\partial \beta_{k}}\sum_{n}w_{i}^{[r]}(n)(d_{ij}-n\mu_{p_{ij}})\\
+	&=\frac{1}{V(\mu_{p_{ij}})}\frac{\partial(\mu_{p_{ij}})}{\partial \beta_{k}}\sum_{n=0}^{N}nw_{i}^{[r]}(n)(\frac{\sum_{n=0}^{N}w_{i}^{[r]}(n)}{\sum_{n=0}^{N}nw_{i}^{[r]}(n)}d_{ij}-\mu_{p_{ij}})
 	\end{aligned}
 \end{equation}
 
-Single $p_{ij}$ GAM uses pseudo-data $\frac{N\sum_{n=0}^{N}w_{i}^{[r]}(n)}{\sum_{n=0}^{N}nw_{i}^{[r]}(n)}d_{ij}$ and weight $\frac{\sum_{n=0}^{N}nw_{i}^{[r]}(n)}{N}$ to fit a quasi-Binomial GAM with trail number N.
+Single $p_{ij}$ GAM uses pseudo-data $\frac{\sum_{n=0}^{N}w_{i}^{[r]}(n)}{\sum_{n=0}^{N}nw_{i}^{[r]}(n)}d_{ij}$ and weight $\sum_{n=0}^{N}nw_{i}^{[r]}(n)$ to fit a quasi-Binomial GAM with trail number N.
 
 
 Each iteration's M-step will fit total $w+2$ weighted GAMs and use the modified IRLS algorithm proposed by Hai Liu and Kung-Sik Chan 2009.

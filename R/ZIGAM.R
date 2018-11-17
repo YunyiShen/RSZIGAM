@@ -1,6 +1,6 @@
 # special helper functions
 
-liklihood.fnr = function(n,det.vec,lambda,p.vec){
+likelihood.fnr = function(n,det.vec,lambda,p.vec){
 	det.p = prod(dbinom(det.vec,rep(n,length(det.vec)),p.vec))
 	pois  = dpois(n,lambda)
 	return(det.p * pois)
@@ -8,7 +8,7 @@ liklihood.fnr = function(n,det.vec,lambda,p.vec){
 
 post.weight_helper = function(n,det.vec, lambda,p.vec,psi,N){
 	Ns = as.matrix( min(det.vec):N )
-	fns = apply(Ns,2,likelihood.fnr,det.vec,lambda,p.vec)
+	fns = apply(Ns,1,likelihood.fnr,det.vec,lambda,p.vec)
 	Zr = psi*sum(fns) + (1-psi) * (sum(det.vec)==0)
 	fn = likelihood.fnr(n,det.vec,lambda,p.vec)
 	return(psi*fn/Zr)
@@ -16,37 +16,12 @@ post.weight_helper = function(n,det.vec, lambda,p.vec,psi,N){
 
 # These are modified from zigam(COZIGAM)
 
-zigam <- function(formula, maxiter = 20, conv.crit = 1e-3,
-                  size = NULL, log.tran = FALSE, family, data=list(), ...)
-{
-  
-  if (is.character(family))
-    fam <- eval(parse(text = family))
-  if (is.function(family))
-    fam <- family()
-  if (fam$family == "gaussian" | fam$family == "Gamma") {
-    zigam.res <- ZIGAM.cts(formula, log.tran = log.tran, family = fam, data=data, ...)
-    attr(zigam.res, "family.type") <- "continuous"
-  }
-  else if (fam$family == "poisson" | fam$family == "binomial") {
-    zigam.res <- ZIGAM.dis(formula, maxiter, conv.crit, size = size, family = fam, data=data, ...)
-    attr(zigam.res, "family.type") <- "discrete"
-  }
-  else stop("family not recognized")
-  attr(zigam.res, "constraint") <- "none"
-  
-  invisible(zigam.res)
-  
-}
+# Modified from ZIGAM.dis(COZIGAM)
 
+## RSZIGAM.dis.R
 
-
-# ZIGAM.dis(COZIGAM)
-
-## ZIGAM.dis.R
-
-ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
-                      size = NULL, data=list(), N,...) # data should contains detmat as det.1,det.2,det.3 etc, period should be detection period number data's formate: data$detmat should be a matrix with nrow = nsite, ncol = nperiod, data$envX, which is the second should be the environmental data at each site, the else, say data$detX.1 data$detX.2 should be the detection varible at all sites and time period 1, 2...etc., colnames should be consistent
+RSZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
+                      size = NULL, data=list(), N,...) # data should contains detmat as det.1,det.2,det.3 etc, period should be detection period number data's formate: data$detmat should be a matrix with nrow = n.site, ncol = nperiod, data$envX, which is the second should be the environmental data at each site, the else, say data$detX.1 data$detX.2 should be the detection varible at all sites and time period 1, 2...etc., colnames should be consistent
 {
   
   require(mgcv)
@@ -63,7 +38,7 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   d.eta.mu <- function(mu) -1/(mu^2)
   d.f0 <- function(mu) -exp(-mu)
   den <- dpois; disp <- 1; est.disp <- FALSE
-  size <- rep.int(1, n)
+  size <- rep.int(1, n.site)
   loglikfun <- function(y, mu, p) {
       e <- as.numeric(y!=0)
       sum((1-e)*log(1-p+p*dpois(y,mu,log=FALSE))+e*(log(p)+dpois(y,mu,log=TRUE)))# likelihood with zero inflated
@@ -91,55 +66,58 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   ## stop here 11/14/2018 13:17 to review MATH632
   ## restart here 11/14/2018 22:20 give up MATH632
   
-  lambda <- pmax(apply(detmat,1,mean), 0.01) # Poisson lambda
-  psi <- rep(0.7, nsite) # occupancy psi
-  p.vec = ( 0.1*(detmat>=0)) # detction p
-  p = matrix((p.vec),nrow = nsite*period,ncol = 1)
-  # quasi.psi = matrix(runif(nsite)>0.5,nrow = nsite,ncol=1)
-  quasi.lambda = pmax(apply(detmat,1,mean), 0.01) 
-  quasi.y = detmat
-  for(i in 1:nsite){ # ugly for again, but I do not have better idea yet.
-	nvec = max(detmat[i,]):N
-	gr = apply(as.matrix(nvec),2,liklihood.fnr,det.vec = detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
+  lambda <- pmax(apply(data$detmat,1,mean), 5) # Poisson lambda
+  psi <- rep(0.7, n.site) # occupancy psi
+  p.vec = ( 0.1*(data$detmat>=0)) # detction p
+  p = matrix((p.vec),nrow = n.site*period,ncol = 1)
+  # quasi.psi = matrix(runif(n.site)>0.5,nrow = n.site,ncol=1)
+  quasi.lambda = pmax(apply(data$detmat,1,mean), 0.01) 
+  quasi.y = data$detmat
+  quasi.psi = psi
+  for(i in 1:n.site){ # ugly for again, but I do not have better idea yet.
+	  nvec = max(data$detmat[i,]):N
+	  gr = apply(as.matrix(nvec),1,likelihood.fnr,det.vec = data$detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
     gr = sum(gr)
-	quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(detmat[,i]!=0)>0))
+	  quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(data$detmat[i,]!=0)==0))
   }
-  norm <- 1; 
+  norm <- 1 
   repli <- 0
   
-  wg.lambda = matrix(0,nsite,1)
+  wg.lambda = matrix(0,n.site,1)
   wg.p = wg.lambda
   while( norm > conv.crit & repli < maxiter) { # this is the EM-PIRLS process hopefully 
     
-	
-	for(i in 1:nsite){ # again, to get quasi data of occupancy status, which is just posterior probability given all parameters
-	    nvec = max(detmat[i,]):N
+  quasi.y = data$detmat
+	for(i in 1:n.site){ # again, to get quasi data of occupancy status, which is just posterior probability given all parameters
+	    nvec = max(data$detmat[i,]):N
 		# quasi data for occupancy status
-	    gr = apply(as.matrix(nvec),2,liklihood.fnr,det.vec = detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
-        gr = sum(gr)
-	    quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(detmat[,i]!=0)>0))
+	    gr = apply(as.matrix(nvec),1,likelihood.fnr,det.vec = data$detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
+      gr = sum(gr)
+	    quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(data$detmat[i,]!=0)==0))
 		
 		# quasi data for Poisson lambda
-		wg_tep = apply(as.matrix(nvec),2, post.weight_helper,detmat[i,], lambda[i],p[,i],psi[i],N)
+		wg_tep = apply(as.matrix(nvec),1, post.weight_helper,data$detmat[i,], lambda[i],p.vec[i,],psi[i],N)
 		wg.lambda[i] = sum(wg_tep)
-		quasi.lambda[i] = sum((0:N) * wg_tep)/wg.lambda[i]
+		quasi.lambda[i] = sum(nvec * wg_tep)/wg.lambda[i]
 		
 		# quasi data for detections
-		wg.p[i] = sum((0:N) * wg_tep)/N
-		quasi.y[i,] = detmat[i,] * (N/quasi.lambda[i])	
+		wg.p[i] = sum(nvec * wg_tep)
+		quasi.y[i,] = data$detmat[i,] /quasi.lambda[i]
     }
-	quasi.y = matrix(quasi.y,nrow = length(quasi.y),ncol=1,byrow = FALSE)
+	quasi.y = matrix(quasi.y,nrow = length(quasi.y),ncol=1) # to make quasi y a single colome
 	
-	# Now fit the det GAMs, should have w models
 	
-	G.psi <- gam(fm.psi, family = quasibinomial, fit=FALSE, data=data.frame(quasi.psi,data$envX), ...)
-    G.lambda = gam(fm.lambda,family = quasipoisson, fit = FALSE,data=data.frame(quasi.psi,data$envX),...)
+	# 11/17/2018 0:28 do not know why subscript out of bound here
+	G.psi <- gam(formula =  fm.psi, family = quasibinomial, fit=FALSE, data=cbind(quasi.psi, (data$envX)), ...)
+	#G.psi <- gam(quasi.psi~s(env.1,env.2,env.3),family = quasibinomial, fit=FALSE, data=psi.data, ...)
+	
+	G.lambda = gam(fm.lambda,family = quasipoisson, fit = FALSE,data=data.frame(quasi.psi,data$envX),...)
 	G.lambda$w = wg.lambda # change the weight in this iter, weight for the data is actually psi, see eq.9a in the technical report
     G.det = gam(fm.p,family = quasibinomial, fit=FALSE, data=data.frame(quasi.y,detdata[,-1]),size = N,...)
     G.det$w = rep(wg.p,period)
 	fit.psi <- gam(G = G.psi) # seems this is the PIRLS work, done by gam 
     fit.lambda <- gam(G = G.lambda)
-	fit.p = (G = G.det,gam)
+	fit.p = gam(G = G.det)
     beta.psi <- coef(fit.psi)
     beta.lambda = coef(fit.lambda)
 	beta.p = coef(fit.p)
@@ -151,7 +129,7 @@ ZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
 	lambda = fit.lambda$fitted
 	psi = fit.psi$fitted
 	p = fit.p$fitted
-	p.vec = matrix(p,nrow = nsite,ncol = period)
+	p.vec = matrix(p,nrow = n.site,ncol = period)
 	
     norm <- max(abs(p-p.old), sum((lambda-lambda.old)^2),abs(psi-psi.old))
     repli <- repli + 1
