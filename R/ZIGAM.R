@@ -6,6 +6,20 @@ likelihood.fnr = function(n,det.vec,lambda,p.vec){
 	return(det.p * pois)
 }
 
+log_likelihood = function(detmat,lambda,p,psi,N){
+	n.site = nrow(detmat)
+	logL = 0
+	for(i in 1:n.site){
+		nvec = max(detmat[i,]):N
+		gr = apply(as.matrix(nvec),1,likelihood.fnr,det.vec = detmat[i,],lambda=lambda[i],p.vec = p[i,])
+		gr = sum(gr)
+		#gr = log(gr)
+		e = 1.0*(max(detmat[i,])!=0)
+		logL = logL + e * (log(psi[i]) + log(gr))+ (1-e)*(log(1-psi[i] + psi[i] * gr))
+	}
+	return(logL)
+}
+
 post.weight_helper = function(n,det.vec, lambda,p.vec,psi,N){
 	Ns = as.matrix( min(det.vec):N )
 	fns = apply(Ns,1,likelihood.fnr,det.vec,lambda,p.vec)
@@ -109,7 +123,7 @@ RSZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
 	quasi.y = matrix(quasi.y,nrow = length(quasi.y),ncol=1) # to make quasi y a single colome
 	
 	
-	# 11/17/2018 0:28 do not know why subscript out of bound here
+	# 11/17/2018 0:28 do not know why subscript out of bound here 11/17 12:09 Due to that formula is not well set
 	G.psi <- gam(formula =  fm.psi, family = quasibinomial, fit=FALSE, data=cbind(quasi.psi, (data$envX)), ...)
 	#G.psi <- gam(quasi.psi~s(env.1,env.2,env.3,bs='cr',k=3),family = quasibinomial, fit=FALSE, data=psidata, ...)
 	
@@ -140,71 +154,110 @@ RSZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
  ## stop here for pokemon 11/16/2018 15:00
  ## TEST Convergence here 11/17/2018 done 12:00, results did not check, however it converges (for the simulation data set, ~270 iters)
   
-  b1 <- fit.gam$coef; b2 <- fit.lr$coef
-  np1 <- length(b1); np2 <- length(b2)
-  sp1 <- fit.gam$sp; sp2 <- fit.lr$sp
-  mu.eta.val <- mu.eta(fit.gam$linear.predictor)
+  beta.psi <- coef(fit.psi)
+  beta.lambda = coef(fit.lambda)
+  beta.p = coef(fit.p)
+  np.psi <- length(beta.psi)
+  np.lambda <- length(beta.lambda)
+  np.p = length(beta.p)
+  sp.psi <- fit.psi$sp
+  sp.lambda <- fit.lambda$sp
+  sp.p = fit.p$sp
+  mu.eta.val <- mu.eta(fit.lambda$linear.predictor)
   
-  n.smooth <- length(G1$smooth)
-  Lambda1 <- matrix(0, np1, np1)
+  ## penalty for three GAMs
+  n.smooth <- length(G.psi$smooth)
+  Lambda.psi <- matrix(0, np.psi, np.psi)
   Lam <- list(); n.S <- numeric(n.smooth) # penalty matrix
   for(k in 1:n.smooth) {
-    n.S[k] <- length(G1$smooth[[k]]$S)
+    n.S[k] <- length(G.psi$smooth[[k]]$S)
     if(k==1) {
-      Lam[[k]] <- sp1[k]*G1$S[[k]]
+      Lam[[k]] <- sp.psi[k]*G.psi$S[[k]]
       if(n.S[k]>1) {
         for(j in 2:n.S[k]) {
-          Lam[[k]] <- Lam[[k]]+sp1[j]*G1$S[[j]]
+          Lam[[k]] <- Lam[[k]]+sp.psi[j]*G.psi$S[[j]]
         }
       }
     }
     else {
-      Lam[[k]] <- sp1[sum(n.S[1:(k-1)])+1]*G1$S[[sum(n.S[1:(k-1)])+1]]
+      Lam[[k]] <- sp.psi[sum(n.S[1:(k-1)])+1]*G.psi$S[[sum(n.S[1:(k-1)])+1]]
       if(n.S[k]>1) {
         for(j in 2:n.S[k]) {
-          Lam[[k]] <- Lam[[k]]+sp1[sum(n.S[1:(k-1)])+j]*G1$S[[sum(n.S[1:(k-1)])+j]]
+          Lam[[k]] <- Lam[[k]]+sp.psi[sum(n.S[1:(k-1)])+j]*G.psi$S[[sum(n.S[1:(k-1)])+j]]
         }
       }
     }
-    first <- G1$smooth[[k]]$first.para
-    last <- G1$smooth[[k]]$last.para
+    first <- G.psi$smooth[[k]]$first.para
+    last <- G.psi$smooth[[k]]$last.para
     Lambda1[first:last, first:last] <- Lam[[k]]
   }
   
-  n.smooth <- length(G2$smooth)
-  Lambda2 <- matrix(0, np2, np2)
+  n.smooth <- length(G.lambda$smooth)
+  Lambda.lambda <- matrix(0, np.lambda, np.lambda)
   Lam <- list(); n.S <- numeric(n.smooth) # penalty matrix
   for(k in 1:n.smooth) {
-    n.S[k] <- length(G2$smooth[[k]]$S)
+    n.S[k] <- length(G.lambda$smooth[[k]]$S)
     if(k==1) {
-      Lam[[k]] <- sp2[k]*G2$S[[k]]
+      Lam[[k]] <- sp.lambda[k]*G.lambda$S[[k]]
       if(n.S[k]>1) {
         for(j in 2:n.S[k]) {
-          Lam[[k]] <- Lam[[k]]+sp2[j]*G2$S[[j]]
+          Lam[[k]] <- Lam[[k]]+sp.lambda[j]*G.lambda$S[[j]]
         }
       }
     }
     else {
-      Lam[[k]] <- sp2[sum(n.S[1:(k-1)])+1]*G2$S[[sum(n.S[1:(k-1)])+1]]
+      Lam[[k]] <- sp.lambda[sum(n.S[1:(k-1)])+1]*G.lambda$S[[sum(n.S[1:(k-1)])+1]]
       if(n.S[k]>1) {
         for(j in 2:n.S[k]) {
-          Lam[[k]] <- Lam[[k]]+sp2[sum(n.S[1:(k-1)])+j]*G2$S[[sum(n.S[1:(k-1)])+j]]
+          Lam[[k]] <- Lam[[k]]+sp.lambda[sum(n.S[1:(k-1)])+j]*G.lambda$S[[sum(n.S[1:(k-1)])+j]]
         }
       }
     }
-    first <- G2$smooth[[k]]$first.para
-    last <- G2$smooth[[k]]$last.para
-    Lambda2[first:last, first:last] <- Lam[[k]]
+    first <- G.lambda$smooth[[k]]$first.para
+    last <- G.lambda$smooth[[k]]$last.para
+    Lambda.lambda[first:last, first:last] <- Lam[[k]]
   }
+
+   n.smooth <- length(G.p$smooth)
+   Lambda.p <- matrix(0, np.lambda, np.lambda)
+   Lam <- list(); n.S <- numeric(n.smooth) # penalty matrix
+   for(k in 1:n.smooth) {
+     n.S[k] <- length(G.p$smooth[[k]]$S)
+     if(k==1) {
+       Lam[[k]] <- sp.p[k]*G.p$S[[k]]
+       if(n.S[k]>1) {
+         for(j in 2:n.S[k]) {
+           Lam[[k]] <- Lam[[k]]+sp.p[j]*G.p$S[[j]]
+         }
+        }
+      }
+      else {
+       Lam[[k]] <- sp.p[sum(n.S[1:(k-1)])+1]*G.p$S[[sum(n.S[1:(k-1)])+1]]
+       if(n.S[k]>1) {
+         for(j in 2:n.S[k]) {
+           Lam[[k]] <- Lam[[k]]+sp.p[sum(n.S[1:(k-1)])+j]*G.p$S[[sum(n.S[1:(k-1)])+j]]
+          }
+        }
+      }
+      first <- G.p$smooth[[k]]$first.para
+      last <- G.p$smooth[[k]]$last.para
+      Lambda.p[first:last, first:last] <- Lam[[k]]
+    }  
   
-  DS1 <- diag(eigen(Lambda1)$values[abs(eigen(Lambda1)$values)>1e-10])
-  DS2 <- diag(eigen(Lambda2)$values[abs(eigen(Lambda2)$values)>1e-10])
+  DS.psi <- diag(eigen(Lambda.psi)$values[abs(eigen(Lambda.psi)$values)>1e-10])
+  DS.lambda <- diag(eigen(Lambda.lambda)$values[abs(eigen(Lambda.lambda)$values)>1e-10])
+  DS.p <- diag(eigen(Lambda.p)$values[abs(eigen(Lambda.p)$values)>1e-10])
   
-  X1 <- G1$X; X2 <- G2$X
+  X.psi <- G.psi$X 
+  X.lambda <- G.lambda$X
+  X.p = G.p$X
   
-  loglik <- loglikfun(y, mu, p) # log-likelihood
-  ploglik <- loglik - as.numeric(0.5*t(b1)%*%Lambda1%*%b1) -  as.numeric(0.5*t(b2)%*%Lambda2%*%b2)
+  loglik <- log_likelihood(data$detmat,lambda,p.vec,psi,N) # log-likelihood
+  ploglik <- loglik - as.numeric(0.5*t(b.psi)%*%Lambda.psi%*%b.psi) -  as.numeric(0.5*t(b.lambda)%*%Lambda.lambda%*%b.lambda) - as.numeric(0.5*t(b.p)%*%Lambda.p%*%b.p)
   
+  
+  
+  # stop here 13:33 11/17/2018
   # Model selection criterion
   I.theta <- matrix(0, ncol=np1+np2, nrow=np1+np2)
   tau.mu <- -size
@@ -218,7 +271,7 @@ RSZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   G.rho.p <- diag(as.vector(p*(1-p)*rho.p))
   
   I.theta[1:np1,1:np1] <- t(X1) %*% G.tau.mu %*% X1 - Lambda1
-  I.theta[(np1+1):(np1+np2),(np1+1):(np1+np2)] <- t(X2) %*% G.rho.p %*% X2 - Lambda2
+  I.theta[(np1+1):(np1+np2),(np1+1):(np1+np2)] <- t(X2) %*% G.rho.p %*% X2 - Lambda.lambda
   I.theta <- -I.theta
   
   logE <- 0.5*determinant(DS1)$modulus + 0.5*determinant(DS2)$modulus+ploglik +
