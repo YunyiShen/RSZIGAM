@@ -12,10 +12,9 @@ log_likelihood = function(detmat,lambda,p,psi,N){
 	for(i in 1:n.site){
 		nvec = max(detmat[i,]):N
 		gr = apply(as.matrix(nvec),1,likelihood.fnr,det.vec = detmat[i,],lambda=lambda[i],p.vec = p[i,])
-		gr = sum(gr)
-		#gr = log(gr)
+		gr = sum(gr) # given all N the probability of having data, which is actually N-mixture
 		e = 1.0*(max(detmat[i,])!=0)
-		logL = logL + e * (log(psi[i]) + log(gr))+ (1-e)*(log(1-psi[i] + psi[i] * gr))
+		logL = logL + e * (log(psi[i]) + log(gr))+ (1-e)*(log(1-psi[i] + psi[i] * gr)) # log likelihood with zero inflating 
 	}
 	return(logL)
 }
@@ -73,7 +72,7 @@ RSZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   # forming data for detgams:
   detdata = matrix(nrow = 1,ncol = (1+ncol(data$envX)+ncol(data[[3]])))
   detdata = detdata[-1,]
-  for(i in 1:period){ # ugly for, but I do not have better idea yet.
+  for(i in 1:period){ 
     y = data$detmat[,i]
     detXtemp = data[[i+2]]
 	detdata = rbind(detdata, data.frame(y,data$envX,detXtemp))
@@ -90,10 +89,10 @@ RSZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   quasi.lambda = pmax(apply(data$detmat,1,mean), 0.01) 
   quasi.y = data$detmat
   quasi.psi = psi
-  for(i in 1:n.site){ # ugly for again, but I do not have better idea yet.
+  for(i in 1:n.site){ # 
 	  nvec = max(data$detmat[i,]):N
 	  gr = apply(as.matrix(nvec),1,likelihood.fnr,det.vec = data$detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
-    gr = sum(gr)
+      gr = sum(gr)
 	  quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(data$detmat[i,]!=0)==0))
   }
   norm <- 1 
@@ -108,30 +107,33 @@ RSZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
 	    nvec = max(data$detmat[i,]):N
 		# quasi data for occupancy status
 	    gr = apply(as.matrix(nvec),1,likelihood.fnr,det.vec = data$detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
-      gr = sum(gr)
+        gr = sum(gr)
 	    quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(data$detmat[i,]!=0)==0))
+		# GAM in occupancy status has all data weight equals to 1
 		
 		# quasi data for Poisson lambda
 		wg_tep = apply(as.matrix(nvec),1, post.weight_helper,data$detmat[i,], lambda[i],p.vec[i,],psi[i],N)
 		wg.lambda[i] = sum(wg_tep)
 		quasi.lambda[i] = sum(nvec * wg_tep)/wg.lambda[i]
+		# weight of Poisson lambda is actually posterior probability of occupancy while pseudo data is posterior mean population size given occupy and data
 		
 		# quasi data for detections
 		wg.p[i] = sum(nvec * wg_tep)
 		quasi.y[i,] = data$detmat[i,] /quasi.lambda[i]
+		# quasi y is the naive probability of having the detections given posterior Poisson mean, while weight is posterior mean of n
     }
 	quasi.y = matrix(quasi.y,nrow = length(quasi.y),ncol=1) # to make quasi y a single colome
 	
 	
 	# 11/17/2018 0:28 do not know why subscript out of bound here 11/17 12:09 Due to that formula is not well set
 	G.psi <- gam(formula =  fm.psi, family = quasibinomial, fit=FALSE, data=cbind(quasi.psi, (data$envX)), ...)
-	#G.psi <- gam(quasi.psi~s(env.1,env.2,env.3,bs='cr',k=3),family = quasibinomial, fit=FALSE, data=psidata, ...)
+	
 	
 	G.lambda = gam(fm.lambda,family = quasipoisson, fit = FALSE, data=data.frame(quasi.psi,data$envX),...)
-	G.lambda$w = wg.lambda # change the weight in this iter, weight for the data is actually psi, see eq.9a in the technical report
+	G.lambda$w = wg.lambda # change the weight in this iter, weight for the data is actually psi, see eq.9a in the technical report, here the weight is set before, see document E-step
   G.det = gam(fm.p,family = quasibinomial, fit=FALSE, data=data.frame(quasi.y,detdata[,-1]),...)
   G.det$w = rep(wg.p,period)
-	fit.psi <- gam(G = G.psi) # seems this is the PIRLS work, done by gam 
+	fit.psi <- gam(G = G.psi) # PIRLS
   fit.lambda <- gam(G = G.lambda)
 	fit.p = gam(G = G.det)
   beta.psi <- coef(fit.psi)
@@ -254,8 +256,6 @@ RSZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   
   loglik <- log_likelihood(data$detmat,lambda,p.vec,psi,N) # log-likelihood
   ploglik <- loglik - as.numeric(0.5*t(b.psi)%*%Lambda.psi%*%b.psi) -  as.numeric(0.5*t(b.lambda)%*%Lambda.lambda%*%b.lambda) - as.numeric(0.5*t(b.p)%*%Lambda.p%*%b.p)
-  
-  
   
   # stop here 13:33 11/17/2018
   # Model selection criterion
