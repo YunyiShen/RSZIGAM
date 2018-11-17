@@ -64,5 +64,11 @@ for(i in 1:n.period + 2){
 }
 
 
-RSZIGAM.dis(formula=y~(env.1+env.2+env.3), formula.det=y~(env.1+env.2+env.3+det.1) ,maxiter = 300, conv.crit = 1e-3,
-                        size = NULL, data=data.test, N=50,knots = 5) 
+RSZIGAM.dis(formula=y~s(env.1,bs="cr")+s(env.2,bs="cr")+s(env.3,bs="cr"), formula.det=y~s(env.1,bs="cr")+s(env.2,bs="cr")+s(env.3,bs="cr")+s(det.1,bs="cr") ,maxiter = 300, conv.crit = 1e-3,
+                         data=data.test, N=50) 
+
+
+#try = data.frame(quasi.psi=runif(30),env.1=runif(30),env.2=runif(30))
+# try.data = read.csv(file.choose())
+# try.data = try.data[,-1]
+# gam(quasi.psi~s(env.1,bs="cr")+s(env.2,bs="cr")+s(env.3,bs="cr"),family = quasibinomial(),data=try.data,fit = F)

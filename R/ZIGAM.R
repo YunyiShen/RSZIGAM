@@ -53,7 +53,8 @@ RSZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   
   fm.psi <- as.formula(sub(gf.N.psi$response,"quasi.psi",deparse(formula)))
   fm.lambda <- as.formula(sub(gf.N.psi$response,"quasi.lambda",deparse(formula)))
-  fm.p <- as.formula(sub(gf.det$response,"quasi.y",deparse(formula)))
+  fm.p <- as.formula(sub(gf.det$response,"quasi.y",deparse(formula.det)))
+  
   
   # forming data for detgams:
   detdata = matrix(nrow = 1,ncol = (1+ncol(data$envX)+ncol(data[[3]])))
@@ -67,7 +68,8 @@ RSZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   ## restart here 11/14/2018 22:20 give up MATH632
   
   lambda <- pmax(apply(data$detmat,1,mean), 5) # Poisson lambda
-  psi <- rep(0.7, n.site) # occupancy psi
+  # psi <- rep(0.7, n.site) # occupancy psi
+  psi = runif(n.site)
   p.vec = ( 0.1*(data$detmat>=0)) # detction p
   p = matrix((p.vec),nrow = n.site*period,ncol = 1)
   # quasi.psi = matrix(runif(n.site)>0.5,nrow = n.site,ncol=1)
@@ -109,20 +111,20 @@ RSZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
 	
 	# 11/17/2018 0:28 do not know why subscript out of bound here
 	G.psi <- gam(formula =  fm.psi, family = quasibinomial, fit=FALSE, data=cbind(quasi.psi, (data$envX)), ...)
-	#G.psi <- gam(quasi.psi~s(env.1,env.2,env.3),family = quasibinomial, fit=FALSE, data=psi.data, ...)
+	#G.psi <- gam(quasi.psi~s(env.1,env.2,env.3,bs='cr',k=3),family = quasibinomial, fit=FALSE, data=psidata, ...)
 	
-	G.lambda = gam(fm.lambda,family = quasipoisson, fit = FALSE,data=data.frame(quasi.psi,data$envX),...)
+	G.lambda = gam(fm.lambda,family = quasipoisson, fit = FALSE, data=data.frame(quasi.psi,data$envX),...)
 	G.lambda$w = wg.lambda # change the weight in this iter, weight for the data is actually psi, see eq.9a in the technical report
-    G.det = gam(fm.p,family = quasibinomial, fit=FALSE, data=data.frame(quasi.y,detdata[,-1]),size = N,...)
-    G.det$w = rep(wg.p,period)
+  G.det = gam(fm.p,family = quasibinomial, fit=FALSE, data=data.frame(quasi.y,detdata[,-1]),...)
+  G.det$w = rep(wg.p,period)
 	fit.psi <- gam(G = G.psi) # seems this is the PIRLS work, done by gam 
-    fit.lambda <- gam(G = G.lambda)
+  fit.lambda <- gam(G = G.lambda)
 	fit.p = gam(G = G.det)
-    beta.psi <- coef(fit.psi)
-    beta.lambda = coef(fit.lambda)
+  beta.psi <- coef(fit.psi)
+  beta.lambda = coef(fit.lambda)
 	beta.p = coef(fit.p)
     
-    lambda.old <- lambda
+  lambda.old <- lambda
 	p.old <- p
 	psi.old = psi
 	
@@ -136,7 +138,7 @@ RSZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
     cat("iteration =", repli, "\t", "norm =", norm, "\n")
   }
  ## stop here for pokemon 11/16/2018 15:00
-  
+ ## TEST Convergence here 11/17/2018 done 12:00, results did not check, however it converges (for the simulation data set, ~270 iters)
   
   b1 <- fit.gam$coef; b2 <- fit.lr$coef
   np1 <- length(b1); np2 <- length(b2)
