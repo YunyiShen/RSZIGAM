@@ -259,7 +259,7 @@ RSZIGAM.dis <- function(formula, formula.det ,maxiter = 20, conv.crit = 1e-3,
   
   # stop here 13:33 11/17/2018
   # Model selection criterion
-  I.theta <- matrix(0, ncol=np1+np2, nrow=np1+np2)
+  I.theta <- matrix(0, ncol=np.psi+np.lambda+np.p, nrow=np.psi+np.lambda+np.p)
   tau.mu <- -size
   rho.p <- rep.int(-1, n)
   a <- 1-p+p*den(0, mu)

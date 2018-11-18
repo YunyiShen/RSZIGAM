@@ -155,7 +155,7 @@ Then deal with single $p_{ij}$:
 	\end{aligned}
 \end{equation}
 
-Now it is related to a quasi-Binomial regression with sample size N, set by user.
+Now it is related to a quasi-Binomial regression.
 \begin{equation}
 	\begin{aligned}
 	\sum_{n}w_{i}^{[r]}(n)\frac{\partial logBin(p_{ij},n)}{\partial \beta_{k}}
@@ -165,9 +165,9 @@ Now it is related to a quasi-Binomial regression with sample size N, set by user
 	\end{aligned}
 \end{equation}
 
-Single $p_{ij}$ GAM uses pseudo-data $\frac{\sum_{n=0}^{N}w_{i}^{[r]}(n)}{\sum_{n=0}^{N}nw_{i}^{[r]}(n)}d_{ij}$ and weight $\sum_{n=0}^{N}nw_{i}^{[r]}(n)$ to fit a quasi-Binomial GAM with trail number N.
+Single $p_{ij}$ GAM uses pseudo-data $\frac{\sum_{n=0}^{N}w_{i}^{[r]}(n)}{\sum_{n=0}^{N}nw_{i}^{[r]}(n)}d_{ij}$ and weight $\sum_{n=0}^{N}nw_{i}^{[r]}(n)$ to fit a quasi-Binomial GAM.
 
 
-Each iteration's M-step will fit total $w+2$ weighted GAMs and use the modified IRLS algorithm proposed by Hai Liu and Kung-Sik Chan 2009.
+Each iteration's M-step will fit total 3 weighted GAMs and use the modified PIRLS algorithm proposed by Hai Liu and Kung-Sik Chan 2009.
 
 \end{document}
