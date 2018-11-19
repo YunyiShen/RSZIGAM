@@ -6,26 +6,6 @@ likelihood.fnr = function(n,det.vec,lambda,p.vec){
 	return(det.p * pois)
 }
 
-log_likelihood_pois = function(detmat,lambda,p,psi,N){
-	n.site = nrow(detmat)
-	logL = 0
-	for(i in 1:n.site){
-		nvec = max(detmat[i,]):N
-		gr = apply(as.matrix(nvec),1,likelihood.fnr,det.vec = detmat[i,],lambda=lambda[i],p.vec = p[i,])
-		gr = sum(gr) # given all N the probability of having data, which is actually N-mixture
-		e = 1.0*(max(detmat[i,])!=0)
-		logL = logL + e * (log(psi[i]) + log(gr))+ (1-e)*(log(1-psi[i] + psi[i] * gr)) # log likelihood with zero inflating 
-	}
-	return(logL)
-}
-
-log_likelihood_occu = function(detmat,p,psi){
-	log_detli = det.vec * log(p.vec) + (1-det.vec) * log(1-det.vec)
-	detli = exp(log_detli)
-	Zr = psi * detli + (1-psi) * (max(detvec)==0)
-	return(log(Zr))
-}
-
 post.weight_helper = function(n,det.vec, lambda,p.vec,psi,N){
 	Ns = as.matrix( min(det.vec):N )
 	fns = apply(Ns,1,likelihood.fnr,det.vec,lambda,p.vec)
@@ -33,6 +13,58 @@ post.weight_helper = function(n,det.vec, lambda,p.vec,psi,N){
 	fn = likelihood.fnr(n,det.vec,lambda,p.vec)
 	return(psi*fn/Zr)
 }
+
+log_likelihood_pois_eachsite = function(det.vec,lambda,p.vec,psi,N){
+	n.site = nrow(detmat)
+	nvec = max(detmat[i,]):N
+	gr = apply(as.matrix(nvec),1,likelihood.fnr,det.vec=det.vec,lambda=lambda,p.vec = p.vec)
+	gr = sum(gr) # given all N the probability of having data, which is actually N-mixture
+	e = 1.0*(max(detmat[i,])!=0)
+	logL = e * (log(psi) + log(gr))+ (1-e)*(log(1-psi + psi * gr)) # log likelihood with zero inflating 
+	retrun(logL)
+}
+
+log_likelihood_pois = function(detmat,lambda,p,psi,N){
+	n.site = nrow(detmat)
+	logL = matrix(0,n.site,1)
+	for(i in 1:n.site){
+		logL[i] = log_likelihood_pois_eachsite(det.vec = detmat[i,],lambda=lambda,p.vec = p[i,],psi = psi[i],N=N) 
+	}
+	return(logL)
+}
+
+Hessian_sum_helper = function(detmat,lambda,p,N){
+	n.site = nrow(detmat)
+	lambda.sqrsumfnn = 0*detmat[,1]
+	lambda.sumsqrfnn = lambda.sqrsumfnn
+	psi.fnminusId0 = lambda.sqrsumfnn
+	p.sumsqr=0 * detmat
+	p.sum = 0 * detmat
+	
+	for(i in 1:n.site){
+		Ns = as.matrix(max(detmat[i,]):N)
+		fns = apply(Ns,1,likelihood.fnr,det.vec=detmat[i,],lambda[i],p.vec=p[i,])
+		nminusmu = Ns-lambda[i]
+		lambda.sqrsumfnn[i] = (sum(fns*nminusmu))^2
+		lambda.sumsqrfnn[i] = sum(fns * nminusmu^2)
+		psi.fnminusId0[i] = sum(fns)-(max(detmat[i,])==0)
+		for(j in 1:ncol(lambda)){
+			p.sumsqr[i,j] = (sum(fns * (detmat[i,j]-Ns*p[i,j])/(p[i,j]*(1-p[i,j]))))^2
+			p.sum[i,j] = (1/(p[i,j]*(1-p[i,j]))^2) * sum(fns * ((detmat[i,j]-Ns*p[i,j])^2-Ns*(1-p[i,j]*p[i,j]-(1-2*p[i,j])*(detmat[i,j]-Ns * p[i,j]))))
+		}
+	}
+	res = list(lambda.sqrsumfnn,lambda.sumsqrfnn,psi.fnminusId0,p.sumsqr,p.sum)
+	return(res)
+}
+
+# helper functions for occupancy
+log_likelihood_occu = function(detmat,p,psi){
+	log_detli = det.vec * log(p.vec) + (1-det.vec) * log(1-det.vec)
+	detli = exp(log_detli)
+	Zr = psi * detli + (1-psi) * (max(detvec)==0)
+	return(log(Zr))
+}
+
 
 occu.post.weight_helper = function(det.vec,p.vec,psi){
 	log_detli = det.vec * log(p.vec) + (1-det.vec) * log(1-det.vec)
@@ -268,23 +300,49 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   X.lambda <- G.lambda$X
   X.p = G.p$X
   
-  loglik <- log_likelihood_pois(data$detmat,lambda,p.vec,psi,N) # log-likelihood
-  ploglik <- loglik - as.numeric(0.5*t(psi)%*%Lambda.psi%*%psi) -  as.numeric(0.5*t(lambda)%*%Lambda.lambda%*%lambda) - as.numeric(0.5*t(p)%*%Lambda.p%*%p)
+  loglik <- (log_likelihood_pois(data$detmat,lambda,p.vec,psi,N)) # log-likelihood at each site, useful in calculating Hessian
+  ploglik <- sum(loglik) - as.numeric(0.5*t(psi)%*%Lambda.psi%*%psi) -  as.numeric(0.5*t(lambda)%*%Lambda.lambda%*%lambda) - as.numeric(0.5*t(p)%*%Lambda.p%*%p)
   
   # stop here 13:33 11/17/2018
   # Model selection criterion
   I.theta <- matrix(0, ncol=np.psi+np.lambda+np.p, nrow=np.psi+np.lambda+np.p)  # neg Hessian at MPLE, COZIGAM has a good approximation using Laplace method to approximate the logE, including a term use this, we can derive this analytically 
   # this matrix will be block diag matrix with block to be Hessian of psi, Hessian of lambda and Hessian of p 
-  tau.lambda <- -size
-  rho.psi <- rep.int(-1, n.site)
-  rho.p = rep.int(-1,n.site*period)
+  # tau.lambda <- -size
+  # rho.psi <- rep.int(-1, n.site)
+  # rho.p = rep.int(-1,n.site*period)
   # Below is the approximation of Hessian 
+  H_sum = Hessian_sum_helper(data$detmat,lambda,p.vec,N) # some useful sums, get it in single loop since I cannot avoid it.
+  
+  
   # Hessian block to lp of psi, no penalty yet
   Hessian.lp.psi = matrix(0,ncol = np.psi,nrow = np.psi)
+  diagD = -exp(-2*loglik) * (H_sum$psi.fnminusId0)^2 * (psi*(1-psi))^2-exp(-loglik) * (H_sum$psi.fnminusId0) * (psi*(1-psi))^2 * (2*psi-1)
+  D = diag(diagD)
+  Hessian.lp.psi = t(X.psi) %*% D %*% X.psi
+  rm(diagD)
+  rm(D)
   # Hessian block to lp of lambda
-  Hessian.lp.lambda = matrix(0,ncol = np.lambda,nrow = np.lambda)
+  # Hessian.lp.lambda = matrix(0,ncol = np.lambda,nrow = np.lambda)
+  
+  diagD = -exp(-2*loglik) * psi^2 * H_sum$lambda.sqrsumfnn + exp(-loglik)*psi*H_sum$lambda.sumsqrfnn
+  D = diag(diagD)
+  Hessian.lp.lambda = t(X.lambda) %*% D %*% X.lambda
+  rm(diagD)
+  rm(D)
+  
+  
   # Hessian block to lp of p
   Hessian.lp.p = matrix(0,ncol = np.p,nrow = np.p)
+  help_u1 = apply(H_sum$p.sumsqr,2,function(sumsqri,psi,loglik){-exp(-2*loglik) * psi^2 * sumsqri^2},psi = psi,loglik = loglik)
+  help.u2 = apply(H_sum$p.sum,2,function(sumi,psi,loglik){exp(-loglik) * psi * sumi},psi = psi,loglik = loglik)
+  uij = help_u1+help_u2
+  rm(help_u1)
+  rm(help_u2)
+  diagD = matrix(uij,nrow = n.site*period,ncol = 1)
+  D = diag(diagD)
+  Hessian.lp.p = t(X.p)%*%D%*%X.p
+  rm(diagD)
+  rm(D)
   
   # add penalty 
   I.theta[1:np.psi,1:np.psi] = Hessian.lp.psi - Lambda.psi
@@ -306,7 +364,7 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   fit.lambda$Vp = V.beta.lambda
   fit.p$Vp = V.beta.p
   
-  res = list(formula = list(formula.psi=formula, formula.lambda = formula, formula.p = formula.det) ,logE=logE, ploglik=ploglik, loglik=loglik,  fit.models = list(fit.psi=fit.psi, fit.lambda=fit.lambda,fit.p = fit.p),fit.values = list(psi=psi, lambda = lambda, p=p), V.beta = list( V.beta.psi=V.beta.psi, V.beta.lambda=V.beta.lambda,V.beta.p=V.beta.p), X=list(X.psi,X.lambda,X.p))
+  res = list(formula = list(formula.psi=formula, formula.lambda = formula, formula.p = formula.det) ,logE=logE, ploglik=ploglik, loglik=sum(loglik),  fit.models = list(fit.psi=fit.psi, fit.lambda=fit.lambda,fit.p = fit.p),fit.values = list(psi=psi, lambda = lambda, p=p), V.beta = list( V.beta.psi=V.beta.psi, V.beta.lambda=V.beta.lambda,V.beta.p=V.beta.p), X=list(X.psi,X.lambda,X.p))
   class(res) = "RSZIGAM.Poisson.result"
   return(res)
   
@@ -475,7 +533,6 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   # Below is the approximation of Hessian 
   # Hessian block to lp of psi, no penalty yet
   Hessian.lp.psi = matrix(0,ncol = np.psi,nrow = np.psi)
-  # Hessian block to lp of lambda
   # Hessian block to lp of p
   Hessian.lp.p = matrix(0,ncol = np.p,nrow = np.p)
   
