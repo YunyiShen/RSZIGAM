@@ -13,13 +13,13 @@ post.weight_helper = function(n,det.vec, lambda,p.vec,psi,N){
 }
 
 log_likelihood_pois_eachsite = function(det.vec,lambda,p.vec,psi,N){
-	n.site = nrow(detmat)
-	nvec = max(detmat[i,]):N
+	# n.site = nrow(detmat)
+	nvec = max(det.vec):N
 	gr = apply(as.matrix(nvec),1,likelihood.fnr,det.vec=det.vec,lambda=lambda,p.vec = p.vec)
 	gr = sum(gr) # given all N the probability of having data, which is actually N-mixture
-	e = 1.0*(max(detmat[i,])!=0)
+	e = 1.0*(max(det.vec)!=0)
 	logL = e * (log(psi) + log(gr))+ (1-e)*(log(1-psi + psi * gr)) # log likelihood with zero inflating 
-	retrun(logL)
+	return(logL)
 }
 
 log_likelihood_pois = function(detmat,lambda,p,psi,N){

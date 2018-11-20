@@ -140,9 +140,11 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   
   ## penalty for three GAMs
   n.smooth <- length(G.psi$smooth)
-  Lambda.psi <- matrix(0, np.psi, np.psi)
+  Lambda.psi <- matrix(0.00, np.psi, np.psi)
   Lam <- list()
   n.S <- numeric(n.smooth) # penalty matrix
+  first = integer(n.smooth)
+  last = integer(n.smooth)
   for(k in 1:n.smooth) {
     n.S[k] <- length(G.psi$smooth[[k]]$S)
     if(k==1) {
@@ -162,9 +164,13 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
       }
     }
     first = G.psi$smooth[[k]]$first.para
+    #first[k] = G.psi$smooth[[k]]$first.para
+    #last[k] = G.psi$smooth[[k]]$last.para
     last = G.psi$smooth[[k]]$last.para
-    Lambda.psi[first:last,first:last] = as.matrix(Lam[[k]])
+    temp = as.matrix(Lam[[k]])
+    Lambda.psi[first:last,first:last] = temp
   }
+  
   
   n.smooth <- length(G.lambda$smooth)
   Lambda.lambda <- matrix(0, np.lambda, np.lambda)
@@ -194,7 +200,7 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   }
 
    n.smooth <- length(G.det$smooth)
-   Lambda.p <- matrix(0, np.lambda, np.lambda)
+   Lambda.p <- matrix(0, np.p, np.p)
    Lam <- list()
    n.S <- numeric(n.smooth) # penalty matrix
    for(k in 1:n.smooth) {
@@ -229,9 +235,10 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   X.p = G.det$X
   
   loglik <- (log_likelihood_pois(data$detmat,lambda,p.vec,psi,N)) # log-likelihood at each site, useful in calculating Hessian
-  ploglik <- sum(loglik) - as.numeric(0.5*t(psi)%*%Lambda.psi%*%psi) -  as.numeric(0.5*t(lambda)%*%Lambda.lambda%*%lambda) - as.numeric(0.5*t(p)%*%Lambda.p%*%p)
+  ploglik <- sum(loglik) - as.numeric(0.5*t(as.matrix(beta.psi))%*%Lambda.psi%*%as.matrix(beta.psi)) -  as.numeric(0.5*t(as.matrix(beta.lambda))%*%Lambda.lambda%*%as.matrix(beta.lambda)) - as.numeric(0.5*t(as.matrix(beta.p))%*%Lambda.p%*%as.matrix(beta.p))
   
   # stop here 13:33 11/17/2018
+  # stop Debug here 14:51 11/20/2018
   # Model selection criterion
   I.theta <- matrix(0, ncol=np.psi+np.lambda+np.p, nrow=np.psi+np.lambda+np.p)  # neg Hessian at MPLE, COZIGAM has a good approximation using Laplace method to approximate the logE, including a term use this, we can derive this analytically 
   # this matrix will be block diag matrix with block to be Hessian of psi, Hessian of lambda and Hessian of p 
