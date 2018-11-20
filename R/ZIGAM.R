@@ -33,7 +33,7 @@ log_likelihood_pois = function(detmat,lambda,p,psi,N){
 	return(logL)
 }
 
-Hessian_sum_helper = function(detmat,lambda,p,N){
+Hessian_sum_helper_pois = function(detmat,lambda,p,N){
 	n.site = nrow(detmat)
 	lambda.sqrsumfnn = 0*detmat[,1]
 	lambda.sumsqrfnn = lambda.sqrsumfnn
@@ -311,7 +311,7 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   # rho.psi <- rep.int(-1, n.site)
   # rho.p = rep.int(-1,n.site*period)
   # Below is the approximation of Hessian 
-  H_sum = Hessian_sum_helper(data$detmat,lambda,p.vec,N) # some useful sums, get it in single loop since I cannot avoid it.
+  H_sum = Hessian_sum_helper_pois(data$detmat,lambda,p.vec,N) # some useful sums, get it in single loop since I cannot avoid it.
   
   
   # Hessian block to lp of psi, no penalty yet
