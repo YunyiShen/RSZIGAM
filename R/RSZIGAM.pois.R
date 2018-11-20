@@ -161,9 +161,9 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
         }
       }
     }
-    first <- G.psi$smooth[[k]]$first.para
-    last <- G.psi$smooth[[k]]$last.para
-    Lambda.psi[first:last, first:last] <- Lam[[k]]
+    first = G.psi$smooth[[k]]$first.para
+    last = G.psi$smooth[[k]]$last.para
+    Lambda.psi[first:last,first:last] = as.matrix(Lam[[k]])
   }
   
   n.smooth <- length(G.lambda$smooth)
