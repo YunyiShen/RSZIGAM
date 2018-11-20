@@ -1,5 +1,6 @@
 # vertual data formation
-source("ZIGAM.R")
+source("RSZIGAM.pois.R")
+source('misc.R')
 meshgrid = function (xrange, yrange){
   ncol = length(xrange)
   nrow = length(yrange)
