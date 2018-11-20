@@ -7,7 +7,7 @@ likelihood.fnr = function(n,det.vec,lambda,p.vec){
 }
 
 post.weight_helper = function(n,det.vec, lambda,p.vec,psi,N){
-	Ns = as.matrix( min(det.vec):N )
+	Ns = as.matrix( max(det.vec):N )
 	fns = apply(Ns,1,likelihood.fnr,det.vec,lambda,p.vec)
 	Zr = psi*sum(fns) + (1-psi) * (sum(det.vec)==0)
 	fn = likelihood.fnr(n,det.vec,lambda,p.vec)
@@ -121,20 +121,20 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   for(i in 1:period){ 
     y = data$detmat[,i]
     detXtemp = data[[i+2]]
-	detdata = rbind(detdata, data.frame(y,data$envX,detXtemp))
+	  detdata = rbind(detdata, data.frame(y,data$envX,detXtemp))
   }
   ## stop here 11/14/2018 13:17 to review MATH632
   ## restart here 11/14/2018 22:20 give up MATH632
   
-  lambda <- pmax(apply(data$detmat,1,mean), 5) # Poisson lambda
-  psi <- rep(0.7, n.site) # occupancy psi
+  lambda <- pmax(apply(data$detmat,1,max),.1) # Poisson lambda
+  psi <- rep(1-sum(apply(data$detmat,1,max)==0)/n.site, n.site) # occupancy psi
   # psi = runif(n.site)
-  p.vec = ( 0.1*(data$detmat>=0)) # detection p initial value global 0.1
+  p.vec = ( 0.5*(data$detmat>=0)) # detection p initial value global 0.1
   p = matrix((p.vec),nrow = n.site*period,ncol = 1)
   # quasi.psi = matrix(runif(n.site)>0.5,nrow = n.site,ncol=1)
-  quasi.lambda = pmax(apply(data$detmat,1,mean), 0.01) 
-  quasi.y = data$detmat
-  quasi.psi = psi
+   quasi.lambda = pmax(apply(data$detmat,1,mean), 0.01) 
+   quasi.y = data$detmat
+   quasi.psi = psi
   for(i in 1:n.site){ # 
 	  nvec = max(data$detmat[i,]):N
 	  gr = apply(as.matrix(nvec),1,likelihood.fnr,det.vec = data$detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
@@ -153,7 +153,7 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
 	    nvec = max(data$detmat[i,]):N
 		# quasi data for occupancy status
 	    gr = apply(as.matrix(nvec),1,likelihood.fnr,det.vec = data$detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
-        gr = sum(gr)
+      gr = sum(gr)
 	    quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(data$detmat[i,]!=0)==0))
 		# GAM in occupancy status has all data weight equals to 1
 		
@@ -175,7 +175,7 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
 	G.psi <- gam(formula =  fm.psi, family = quasibinomial, fit=FALSE, data=cbind(quasi.psi, (data$envX)), ...)
 	
 	
-	G.lambda = gam(fm.lambda,family = quasipoisson, fit = FALSE, data=data.frame(quasi.psi,data$envX),...)
+	G.lambda = gam(fm.lambda,family = quasipoisson, fit = FALSE, data=cbind(quasi.lambda,data$envX),...)
 	G.lambda$w = wg.lambda # change the weight in this iter, weight for the data is actually psi, see eq.9a in the technical report, here the weight is set before, see document E-step
     G.det = gam(fm.p,family = quasibinomial, fit=FALSE, data=data.frame(quasi.y,detdata[,-1]),...)
     G.det$w = rep(wg.p,period)
@@ -216,7 +216,8 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   ## penalty for three GAMs
   n.smooth <- length(G.psi$smooth)
   Lambda.psi <- matrix(0, np.psi, np.psi)
-  Lam <- list(); n.S <- numeric(n.smooth) # penalty matrix
+  Lam <- list()
+  n.S <- numeric(n.smooth) # penalty matrix
   for(k in 1:n.smooth) {
     n.S[k] <- length(G.psi$smooth[[k]]$S)
     if(k==1) {
@@ -237,12 +238,13 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
     }
     first <- G.psi$smooth[[k]]$first.para
     last <- G.psi$smooth[[k]]$last.para
-    Lambda1[first:last, first:last] <- Lam[[k]]
+    Lambda.psi[first:last, first:last] <- Lam[[k]]
   }
   
   n.smooth <- length(G.lambda$smooth)
   Lambda.lambda <- matrix(0, np.lambda, np.lambda)
-  Lam <- list(); n.S <- numeric(n.smooth) # penalty matrix
+  Lam <- list()
+  n.S <- numeric(n.smooth) # penalty matrix
   for(k in 1:n.smooth) {
     n.S[k] <- length(G.lambda$smooth[[k]]$S)
     if(k==1) {
@@ -266,29 +268,30 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
     Lambda.lambda[first:last, first:last] <- Lam[[k]]
   }
 
-   n.smooth <- length(G.p$smooth)
+   n.smooth <- length(G.det$smooth)
    Lambda.p <- matrix(0, np.lambda, np.lambda)
-   Lam <- list(); n.S <- numeric(n.smooth) # penalty matrix
+   Lam <- list()
+   n.S <- numeric(n.smooth) # penalty matrix
    for(k in 1:n.smooth) {
-     n.S[k] <- length(G.p$smooth[[k]]$S)
+     n.S[k] <- length(G.det$smooth[[k]]$S)
      if(k==1) {
-       Lam[[k]] <- sp.p[k]*G.p$S[[k]]
+       Lam[[k]] <- sp.p[k]*G.det$S[[k]]
        if(n.S[k]>1) {
          for(j in 2:n.S[k]) {
-           Lam[[k]] <- Lam[[k]]+sp.p[j]*G.p$S[[j]]
+           Lam[[k]] <- Lam[[k]]+sp.p[j]*G.det$S[[j]]
          }
         }
       }
       else {
-       Lam[[k]] <- sp.p[sum(n.S[1:(k-1)])+1]*G.p$S[[sum(n.S[1:(k-1)])+1]]
+       Lam[[k]] <- sp.p[sum(n.S[1:(k-1)])+1]*G.det$S[[sum(n.S[1:(k-1)])+1]]
        if(n.S[k]>1) {
          for(j in 2:n.S[k]) {
-           Lam[[k]] <- Lam[[k]]+sp.p[sum(n.S[1:(k-1)])+j]*G.p$S[[sum(n.S[1:(k-1)])+j]]
+           Lam[[k]] <- Lam[[k]]+sp.p[sum(n.S[1:(k-1)])+j]*G.det$S[[sum(n.S[1:(k-1)])+j]]
           }
         }
       }
-      first <- G.p$smooth[[k]]$first.para
-      last <- G.p$smooth[[k]]$last.para
+      first <- G.det$smooth[[k]]$first.para
+      last <- G.det$smooth[[k]]$last.para
       Lambda.p[first:last, first:last] <- Lam[[k]]
     }  
   
@@ -298,7 +301,7 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   
   X.psi <- G.psi$X 
   X.lambda <- G.lambda$X
-  X.p = G.p$X
+  X.p = G.det$X
   
   loglik <- (log_likelihood_pois(data$detmat,lambda,p.vec,psi,N)) # log-likelihood at each site, useful in calculating Hessian
   ploglik <- sum(loglik) - as.numeric(0.5*t(psi)%*%Lambda.psi%*%psi) -  as.numeric(0.5*t(lambda)%*%Lambda.lambda%*%lambda) - as.numeric(0.5*t(p)%*%Lambda.p%*%p)
@@ -487,29 +490,30 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
     Lambda1[first:last, first:last] <- Lam[[k]]
   }
   
-   n.smooth <- length(G.p$smooth)
+   n.smooth <- length(G.det$smooth)
    Lambda.p <- matrix(0, np.lambda, np.lambda)
-   Lam <- list(); n.S <- numeric(n.smooth) # penalty matrix
+   Lam <- list()
+   n.S <- numeric(n.smooth) # penalty matrix
    for(k in 1:n.smooth) {
-     n.S[k] <- length(G.p$smooth[[k]]$S)
+     n.S[k] <- length(G.det$smooth[[k]]$S)
      if(k==1) {
-       Lam[[k]] <- sp.p[k]*G.p$S[[k]]
+       Lam[[k]] <- sp.p[k]*G.det$S[[k]]
        if(n.S[k]>1) {
          for(j in 2:n.S[k]) {
-           Lam[[k]] <- Lam[[k]]+sp.p[j]*G.p$S[[j]]
+           Lam[[k]] <- Lam[[k]]+sp.p[j]*G.det$S[[j]]
          }
         }
       }
       else {
-       Lam[[k]] <- sp.p[sum(n.S[1:(k-1)])+1]*G.p$S[[sum(n.S[1:(k-1)])+1]]
+       Lam[[k]] <- sp.p[sum(n.S[1:(k-1)])+1]*G.det$S[[sum(n.S[1:(k-1)])+1]]
        if(n.S[k]>1) {
          for(j in 2:n.S[k]) {
-           Lam[[k]] <- Lam[[k]]+sp.p[sum(n.S[1:(k-1)])+j]*G.p$S[[sum(n.S[1:(k-1)])+j]]
+           Lam[[k]] <- Lam[[k]]+sp.p[sum(n.S[1:(k-1)])+j]*G.det$S[[sum(n.S[1:(k-1)])+j]]
           }
         }
       }
-      first <- G.p$smooth[[k]]$first.para
-      last <- G.p$smooth[[k]]$last.para
+      first <- G.det$smooth[[k]]$first.para
+      last <- G.det$smooth[[k]]$last.para
       Lambda.p[first:last, first:last] <- Lam[[k]]
     }  
   
@@ -519,7 +523,7 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   
   X.psi = G.psi$X 
   
-  X.p = G.p$X
+  X.p = G.det$X
   
   loglik <- log_likelihood_occu(data$detmat,p.vec,psi) # log-likelihood
   ploglik <- loglik - as.numeric(0.5*t(psi)%*%Lambda.psi%*%psi) - as.numeric(0.5*t(p)%*%Lambda.p%*%p)

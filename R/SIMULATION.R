@@ -27,10 +27,14 @@ env.3 = runif(n.site)
 det.1 = runif(n.period)
 P.xy = meshgrid(det.1,env.1)
 
-lambda = 4* dnorm(env.1,mean = 0.5,sd = 0.3) * dnorm(env.2,mean = 0.75,sd = 0.2)
-p = sigmoid(as.matrix( P.xy[[1]])) * 
-  dnorm(as.matrix( P.xy[[2]]))/max(as.matrix( dnorm(P.xy[[2]])))
-psi = sigmoid(env.3*10-5)*dnorm(env.1,sd=0.7)/(max(dnorm(env.1,sd=0.7)))
+#lambda = 4* dnorm(env.1,mean = 0.5,sd = 0.3) * dnorm(env.2,mean = 0.75,sd = 0.2)
+lambda = dnorm(env.1,mean = 0.4,sd=0.15)+dnorm(env.1,mean=0.7,sd = 0.1) + dnorm(env.2,mean = 0.75,sd=0.2)
+#p = sigmoid(as.matrix( P.xy[[1]])) * 
+#  dnorm(as.matrix( P.xy[[2]]))/max(as.matrix( dnorm(P.xy[[2]])))
+p = sigmoid(as.matrix( P.xy[[1]]) + 
+  dnorm(as.matrix( P.xy[[2]]))/max(as.matrix( dnorm(P.xy[[2]]))))
+#psi = sigmoid(env.3*10-5)*dnorm(env.1,sd=0.7)/(max(dnorm(env.1,sd=0.7)))
+psi = sigmoid(env.3+dnorm(env.1,0.3,sd=0.2)/(max(dnorm(env.1,0.3,sd=0.2))))
 
 Ni = apply(as.matrix(lambda),1,rpois,n=1)
 detection = matrix(nrow =n.site, ncol = n.period)
@@ -64,9 +68,9 @@ for(i in 1:n.period + 2){
 }
 
 
-RSZIGAM.dis(formula=y~s(env.1,bs="cr")+s(env.2,bs="cr")+s(env.3,bs="cr"), formula.det=y~s(env.1,bs="cr")+s(env.2,bs="cr")+s(env.3,bs="cr")+s(det.1,bs="cr") ,maxiter = 300, conv.crit = 1e-3,
-                         data=data.test, N=50) 
-
+#RSZIGAM.pois(formula=y~s(env.1,bs="cr",k=1)+s(env.2,bs="cr",k=1)+s(env.3,bs="cr",k=1), formula.det=y~s(env.1,bs="cr",k=1)+s(env.2,bs="cr",k=1)+s(env.3,bs="cr",k=1)+s(det.1,bs="cr",k=1) ,maxiter = 300, conv.crit = 1e-3,
+#                         data=data.test, N=50) 
+RSZIGAM.pois(y~s(env.1,bs="cr",k=4)+s(env.2,bs='cr',k=3)+s(env.3,bs='cr',k=3),y~s(env.1,bs='cr',k=3)+s(env.2,bs='cr',k=3)+s(env.3,bs='cr',k=3)+s(det.1,bs='cr',k=3),data=data.test,N=100,maxiter = 3)
 
 #try = data.frame(quasi.psi=runif(30),env.1=runif(30),env.2=runif(30))
 # try.data = read.csv(file.choose())

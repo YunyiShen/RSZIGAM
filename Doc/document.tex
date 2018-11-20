@@ -23,7 +23,7 @@ First, set $(n,\vec{d})$ is the latent population and detection vectors at site 
 Assume detections given latent population n were binomial distributed with parameter $p_{j}$, thus:
 \begin{equation}
 	\begin{aligned}
-		P(\vec{d}|n)&=\prod_{j=1}^{w}\binom{n}{d_{j}}p_{j}^{d_{j}}(1-p_{j})^{d_{j}}\\
+		P(\vec{d}|n)&=\prod_{j=1}^{w}\binom{n}{d_{j}}p_{j}^{d_{j}}(1-p_{j})^{n-d_{j}}\\
 		&=\prod_{j=1}^{w}\binom{n}{d_{j}}exp(\sum_{j=1}^{w}d_{j}log\frac{p_{j}}{1-p_{j}}+n\sum_{j=1}^{w}log(1-p_{j}))
 	\end{aligned}
 \end{equation}
