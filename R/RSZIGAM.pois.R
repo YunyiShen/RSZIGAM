@@ -23,10 +23,6 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   d.f0 <- function(mu) -exp(-mu)
   den <- dpois; disp <- 1; est.disp <- FALSE
   size <- rep.int(1, n.site)
-  # loglikfun <- function(y, mu, p) {
-      # e <- as.numeric(y!=0)
-      # sum((1-e)*log(1-p+p*dpois(y,mu,log=FALSE))+e*(log(p)+dpois(y,mu,log=TRUE)))# likelihood with zero inflated
-    # }
 
   
   variance <- family$variance
@@ -48,15 +44,13 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
     detXtemp = data[[i+2]]
 	  detdata = rbind(detdata, data.frame(y,data$envX,detXtemp))
   }
-  ## stop here 11/14/2018 13:17 to review MATH632
-  ## restart here 11/14/2018 22:20 give up MATH632
   
   lambda <- pmax(apply(data$detmat,1,max),.1) # Poisson lambda
   psi <- rep(1-sum(apply(data$detmat,1,max)==0)/n.site, n.site) # occupancy psi
   # psi = runif(n.site)
   p.vec = ( 0.5*(data$detmat>=0)) # detection p initial value global 0.1
   p = matrix((p.vec),nrow = n.site*period,ncol = 1)
-  # quasi.psi = matrix(runif(n.site)>0.5,nrow = n.site,ncol=1)
+
    quasi.lambda = pmax(apply(data$detmat,1,mean), 0.01) 
    quasi.y = data$detmat
    quasi.psi = psi
@@ -96,7 +90,7 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
 	quasi.y = matrix(quasi.y,nrow = length(quasi.y),ncol=1) # to make quasi y a single colome
 	
 	
-	# 11/17/2018 0:28 do not know why subscript out of bound here 11/17 12:09 Due to that formula is not well set
+	
 	G.psi <- gam(formula =  fm.psi, family = quasibinomial, fit=FALSE, data=cbind(quasi.psi, (data$envX)), ...)
 	
 	
@@ -124,8 +118,6 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
     repli <- repli + 1
     cat("iteration =", repli, "\t", "norm =", norm, "\n")
   }
- ## stop here for pokemon 11/16/2018 15:00
- ## TEST Convergence here 11/17/2018 done 12:00, results did not check, however it converges (for the simulation data set, ~270 iters)
   
   beta.psi <- coef(fit.psi)
   beta.lambda = coef(fit.lambda)
@@ -164,8 +156,6 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
       }
     }
     first = G.psi$smooth[[k]]$first.para
-    #first[k] = G.psi$smooth[[k]]$first.para
-    #last[k] = G.psi$smooth[[k]]$last.para
     last = G.psi$smooth[[k]]$last.para
     temp = as.matrix(Lam[[k]])
     Lambda.psi[first:last,first:last] = temp
@@ -237,14 +227,9 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   loglik <- (log_likelihood_pois(data$detmat,lambda,p.vec,psi,N)) # log-likelihood at each site, useful in calculating Hessian
   ploglik <- sum(loglik) - as.numeric(0.5*t(as.matrix(beta.psi))%*%Lambda.psi%*%as.matrix(beta.psi)) -  as.numeric(0.5*t(as.matrix(beta.lambda))%*%Lambda.lambda%*%as.matrix(beta.lambda)) - as.numeric(0.5*t(as.matrix(beta.p))%*%Lambda.p%*%as.matrix(beta.p))
   
-  # stop here 13:33 11/17/2018
-  # stop Debug here 14:51 11/20/2018
   # Model selection criterion
   I.theta <- matrix(0, ncol=np.psi+np.lambda+np.p, nrow=np.psi+np.lambda+np.p)  # neg Hessian at MPLE, COZIGAM has a good approximation using Laplace method to approximate the logE, including a term use this, we can derive this analytically 
   # this matrix will be block diag matrix with block to be Hessian of psi, Hessian of lambda and Hessian of p 
-  # tau.lambda <- -size
-  # rho.psi <- rep.int(-1, n.site)
-  # rho.p = rep.int(-1,n.site*period)
   # Below is the approximation of Hessian 
   H_sum = Hessian_sum_helper_pois(data$detmat,lambda,p.vec,N) # some useful sums, get it in single loop since I cannot avoid it.
   
