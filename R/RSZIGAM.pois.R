@@ -252,7 +252,8 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   # Hessian block to lp of psi, no penalty yet
   Hessian.lp.psi = matrix(0,ncol = np.psi,nrow = np.psi)
   diagD = -exp(-2*loglik) * (H_sum$psi.fnminusId0)^2 * (psi*(1-psi))^2-exp(-loglik) * (H_sum$psi.fnminusId0) * (psi*(1-psi))^2 * (2*psi-1)
-  D = diag(diagD)
+  D=matrix(0,nrow = length(diagD),ncol = length(diagD)) 
+  diag(D) = (diagD)
   Hessian.lp.psi = t(X.psi) %*% D %*% X.psi
   rm(diagD)
   rm(D)
@@ -260,7 +261,8 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   # Hessian.lp.lambda = matrix(0,ncol = np.lambda,nrow = np.lambda)
   
   diagD = -exp(-2*loglik) * psi^2 * H_sum$lambda.sqrsumfnn + exp(-loglik)*psi*H_sum$lambda.sumsqrfnn
-  D = diag(diagD)
+  D=matrix(0,nrow = length(diagD),ncol = length(diagD)) 
+  diag(D) = (diagD)
   Hessian.lp.lambda = t(X.lambda) %*% D %*% X.lambda
   rm(diagD)
   rm(D)
@@ -269,12 +271,13 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   # Hessian block to lp of p
   Hessian.lp.p = matrix(0,ncol = np.p,nrow = np.p)
   help_u1 = apply(H_sum$p.sumsqr,2,function(sumsqri,psi,loglik){-exp(-2*loglik) * psi^2 * sumsqri^2},psi = psi,loglik = loglik)
-  help.u2 = apply(H_sum$p.sum,2,function(sumi,psi,loglik){exp(-loglik) * psi * sumi},psi = psi,loglik = loglik)
+  help_u2 = apply(H_sum$p.sum,2,function(sumi,psi,loglik){exp(-loglik) * psi * sumi},psi = psi,loglik = loglik)
   uij = help_u1+help_u2
   rm(help_u1)
   rm(help_u2)
   diagD = matrix(uij,nrow = n.site*period,ncol = 1)
-  D = diag(diagD)
+  D=matrix(0,nrow = length(diagD),ncol = length(diagD)) 
+  diag(D) = (diagD)
   Hessian.lp.p = t(X.p)%*%D%*%X.p
   rm(diagD)
   rm(D)
@@ -302,6 +305,6 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   res = list(formula = list(formula.psi=formula, formula.lambda = formula, formula.p = formula.det) ,logE=logE, ploglik=ploglik, loglik=sum(loglik),  fit.models = list(fit.psi=fit.psi, fit.lambda=fit.lambda,fit.p = fit.p),fit.values = list(psi=psi, lambda = lambda, p=p), V.beta = list( V.beta.psi=V.beta.psi, V.beta.lambda=V.beta.lambda,V.beta.p=V.beta.p), X=list(X.psi,X.lambda,X.p))
   class(res) = "RSZIGAM.Poisson.result"
   return(res)
-  
+  # until here no error
 }
 

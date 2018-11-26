@@ -46,12 +46,13 @@ Hessian_sum_helper_pois = function(detmat,lambda,p,N){
 		lambda.sqrsumfnn[i] = (sum(fns*nminusmu))^2
 		lambda.sumsqrfnn[i] = sum(fns * nminusmu^2)
 		psi.fnminusId0[i] = sum(fns)-(max(detmat[i,])==0)
-		for(j in 1:ncol(lambda)){
+		for(j in 1:ncol(detmat)){
 			p.sumsqr[i,j] = (sum(fns * (detmat[i,j]-Ns*p[i,j])/(p[i,j]*(1-p[i,j]))))^2
 			p.sum[i,j] = (1/(p[i,j]*(1-p[i,j]))^2) * sum(fns * ((detmat[i,j]-Ns*p[i,j])^2-Ns*(1-p[i,j]*p[i,j]-(1-2*p[i,j])*(detmat[i,j]-Ns * p[i,j]))))
 		}
 	}
 	res = list(lambda.sqrsumfnn,lambda.sumsqrfnn,psi.fnminusId0,p.sumsqr,p.sum)
+	names(res) = c('lambda.sqrsumfnn','lambda.sumsqrfnn','psi.fnminusId0','p.sumsqr','p.sum')
 	return(res)
 }
 
