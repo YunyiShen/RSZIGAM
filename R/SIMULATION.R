@@ -1,4 +1,5 @@
 # vertual data formation
+setwd("C:/Users/yshen99/Documents/GitHub/RSZIGAM/R")
 source("RSZIGAM.pois.R")
 source('misc.R')
 meshgrid = function (xrange, yrange){
@@ -19,7 +20,7 @@ meshgrid = function (xrange, yrange){
 require(e1071)
 
 #setwd('E:/UW Lab jobs/Community Assembly/ANN Poisson/vertual data')
-n.site = 30
+n.site = 200
 n.period = 20
 set.seed(0)
 env.1 = runif(n.site)
@@ -69,5 +70,9 @@ for(i in 1:n.period + 2){
 }
 
 
-RSZIGAM.pois(y~s(env.1,bs="cr",k=4)+s(env.2,bs='cr',k=3)+s(env.3,bs='cr',k=3),y~s(env.1,bs='cr',k=3)+s(env.2,bs='cr',k=3)+s(env.3,bs='cr',k=3)+s(det.1,bs='cr',k=3),data=data.test,N=100,maxiter = 1)
+RES.simu=RSZIGAM.pois(y~s(env.1,bs="tp",k=15)+s(env.2,bs="tp",k=15)+s(env.3,bs="tp",k=15),y~s(env.1,bs="tp",k=15)+s(env.2,bs="tp",k=15)+s(env.3,bs="tp",k=15)+s(det.1,bs="tp",k=3),data=data.test,N=100,maxiter = 100)
 # no error yet, debug mode
+
+envnew = data.frame(env.1=env.1,env.2=0.5,env.3=0.5)
+
+plot(env.1,predict(RES.simu$fit.models$fit.lambda,envnew))

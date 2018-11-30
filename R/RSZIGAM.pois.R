@@ -293,3 +293,4 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   # until here no error
 }
 
+
