@@ -68,12 +68,12 @@ RSZIGAM.pois <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   while( norm > conv.crit & repli < maxiter) { # this is the EM-PIRLS process
     
     quasi.y = data$detmat # make quasi.y the matrix form
-	for(i in 1:n.site){ # again, to get quasi data of occupancy status, which is just posterior probability given all parameters
+	  for(i in 1:n.site){ # again, to get quasi data of occupancy status, which is just posterior probability given all parameters
 	    nvec = max(data$detmat[i,]):N
 		# quasi data for occupancy status
 	    gr = apply(as.matrix(nvec),1,likelihood.fnr,det.vec = data$detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
       gr = sum(gr)
-	    quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(data$detmat[i,]!=0)==0))
+	    quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(data$detmat[i,])==0))
 		# GAM in occupancy status has all data weight equals to 1
 		
 		# quasi data for Poisson lambda
