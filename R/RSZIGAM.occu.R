@@ -10,6 +10,11 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
 {
   source("misc.R")
   require(mgcv)
+  datachecking = check.data(data)
+  print(datachecking$msg)
+  if(!datachecking$allright){
+	stop()
+  }
   #gf.N.psi <- interpret.gam(formula)
   gf.psi <- interpret.gam(formula)
   gf.det <- interpret.gam(formula.det)
@@ -34,7 +39,6 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   }
   
   
-  lambda <- pmax(apply(data$detmat,1,mean), 5) # Poisson lambda
   psi <- rep(0.7, n.site) # occupancy psi
   # psi = runif(n.site)
   p.vec = ( 0.1*(data$detmat>=0)) # detection p initial value global 0.1
@@ -44,28 +48,23 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   norm <- 1 
   repli <- 0
   
-  wg.lambda = matrix(0,n.site,1)
-  wg.p = wg.lambda
   while( norm > conv.crit & repli < maxiter) { # this is the EM-PIRLS process
     
     quasi.y = data$detmat # make quasi.y the matrix form
 	for(i in 1:n.site){ # again, to get quasi data of occupancy status, which is just posterior probability given all parameters
 		# quasi data for occupancy status
 	    quasi.psi[i] = occu.post.weight_helper(det.vec=data$detmat[i,],p.vec=p.vec[i,],psi)
+		wg.p[i] = quasi.psi
 		# GAM in occupancy status has all data weight equals to 1
     }
-	wg.p[i] = quasi.psi
+	
 	y = matrix(detmat,nrow = length(detmat),ncol=1) # to make quasi y a single colome
-	
-	
-	
 	G.psi <- gam(formula =  fm.psi, family = quasibinomial, fit=FALSE, data=cbind(quasi.psi, (data$envX)), ...)
-	
 	
 	# change the weight in this iter, weight for the data is actually psi, see eq.9a in the technical report, here the weight is set before, see document E-step
     G.det = gam(fm.p,family = quasibinomial, fit=FALSE, data=detdata,...)
     G.det$w = rep(wg.p,period)
-	fit.psi <- gam(G = G.psi) # PIRLS
+	fit.psi = gam(G = G.psi) # PIRLS
 	fit.p = gam(G = G.det)
 	beta.psi = coef(fit.psi)
 	beta.p = coef(fit.p)
@@ -89,7 +88,6 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   
   np.p = length(beta.p)
   sp.psi <- fit.psi$sp
-  
   sp.p = fit.p$sp
   
   

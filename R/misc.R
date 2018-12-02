@@ -71,3 +71,61 @@ occu.post.weight_helper = function(det.vec,p.vec,psi){
 	Zr = psi * detli + (1-psi) * (max(detvec)==0)
 	return(psi * detli/Zr)
 }
+
+meshgrid = function (xrange, yrange){
+  ncol = length(xrange)
+  nrow = length(yrange)
+  X.x = matrix(nrow = nrow,ncol = ncol)
+  X.y = matrix(nrow = nrow,ncol = ncol)
+  for (i in 1:ncol){
+    X.y[,i] = yrange
+  }
+  for (i in 1:nrow){
+    X.x[i,] = xrange
+  }
+  
+  X = list(X.x,X.y)
+  return(X)
+}
+
+check.data = function(data){
+	print("Checking data formation...")
+	msg = "Data formation all pass."
+	allright = TRUE
+	if(is.null(data$detmat)){
+		allright = FALSE
+		msg = "Missing detection matrix."
+		return(list(allright = allright,msg=msg))
+	}
+	
+	if(is.null(data$envX)){
+		allright = FALSE
+		msg = "Missing environmental data."
+		return(list(allright=allright,msg=msg))
+	}
+	
+	n.site = nrow(data$detmat)
+	n.period = ncol(data$detmat)
+	len.data = length(data)
+	
+	if(nrow(data$envX)!=n.site){
+		allright = FALSE
+		msg = "Environmental variables show site number which does not agree with detection matrix."
+		return(list(allright = allright,msg = msg))
+	}
+	
+	if(len.data != (n.period + 2) & len.data != 2){
+		allright = FALSE
+		msg = "Detection variables show number of detection periods which does not agree with detection matrix."
+		return(list(allright = allright,msg = msg))
+	}
+	
+	n.site.detvar = sapply(data[c(-1,-2)],function(mat,n.site){nrow(mat)!=n.site},n.site=n.site)
+	if(sum(n.site.detvar)!=0){
+		disagreeperiod = which(n.site.detvar)
+		msg = paste("Detection variables of period",paste(disagreeperiod,collapse=","),"show site numbers which do not agree with detection matrix.")
+		return(list(allright = allright,msg = msg))
+	}
+	
+	return(list(allright = allright,msg = msg))
+}
