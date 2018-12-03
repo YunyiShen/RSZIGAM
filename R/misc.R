@@ -89,7 +89,7 @@ meshgrid = function (xrange, yrange){
 }
 
 check.data = function(data){
-	print("Checking data formation...")
+	cat("Checking data formation...")
 	msg = "Data formation all pass."
 	allright = TRUE
 	if(is.null(data$detmat)){

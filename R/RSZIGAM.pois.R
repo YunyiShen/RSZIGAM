@@ -10,7 +10,7 @@ RSZIGAM.pois = function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   source("misc.R")
   require(mgcv)
   datachecking = check.data(data)
-  print(datachecking$msg)
+  cat(datachecking$msg)
   if(!datachecking$allright){
 	stop()
   }
