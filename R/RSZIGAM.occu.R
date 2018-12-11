@@ -11,10 +11,11 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   source("misc.R")
   require(mgcv)
   datachecking = check.data(data)
-  print(datachecking$msg)
+  
   if(!datachecking$allright){
-	stop()
+	stop(datachecking$msg)
   }
+  cat(datachecking$msg)
   #gf.N.psi <- interpret.gam(formula)
   gf.psi <- interpret.gam(formula)
   gf.det <- interpret.gam(formula.det)
@@ -153,20 +154,35 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   
   X.p = G.det$X
   
-  loglik <- log_likelihood_occu(data$detmat,p.vec,psi) # log-likelihood
-  ploglik <- loglik - as.numeric(0.5*t(psi)%*%Lambda.psi%*%psi) - as.numeric(0.5*t(p)%*%Lambda.p%*%p)
+  loglik <- log_likelihood_occu(data$detmat,p.vec,psi) # log-likelihood at each site
+  ploglik <- sum(loglik) - as.numeric(0.5*t(psi)%*%Lambda.psi%*%psi) - as.numeric(0.5*t(p)%*%Lambda.p%*%p)
   
   # stop here 13:33 11/17/2018
   # Model selection criterion
   I.theta <- matrix(0, ncol=np.psi+np.p, nrow=np.psi+np.p)  # neg Hessian at MPLE, COZIGAM has a good approximation using Laplace method to approximate the logE, including a term use this, we can derive this analytically 
-  # this matrix will be block diag matrix with block to be Hessian of psi, Hessian of lambda and Hessian of p 
-  rho.psi <- rep.int(-1, n.site)
-  rho.p = rep.int(-1,n.site*period)
+  # this matrix will be block diag matrix with block to be Hessian of psi and Hessian of p 
+  H_sum = Hessian_sum_helper_occu(detmat,p)
   # Below is the approximation of Hessian 
   # Hessian block to lp of psi, no penalty yet
+
   Hessian.lp.psi = matrix(0,ncol = np.psi,nrow = np.psi)
+  diagD = -exp(-2*loglik) * (H_sum$allpminusId0)^2 * (psi*(1-psi))^2-exp(-loglik) * (H_sum$allpminusId0) * (psi*(1-psi))^2 * (2*psi-1)
+  D=matrix(0,nrow = length(diagD),ncol = length(diagD)) 
+  diag(D) = (diagD)
+  Hessian.lp.psi = t(X.psi) %*% D %*% X.psi
+  rm(diagD)
+  rm(D)
   # Hessian block to lp of p
   Hessian.lp.p = matrix(0,ncol = np.p,nrow = np.p)
+  uij = (-1)^(1-data$detmat)*(1/p^2*(1-p)^2)*exp(-(data$detmat * log(p) + (1-data$detmat)*(log(1-p))))
+  uij = apply(uij,2,function(ui,psipi,loglik){-(1/loglik)*psipi * ui},psipi = psi*H_sum$allp,loglik=loglik)
+  diagD = matrix(uij,nrow = n.site*period,ncol = 1)
+  D=matrix(0,nrow = length(diagD),ncol = length(diagD)) 
+  diag(D) = (diagD)
+  Hessian.lp.p = t(X.p)%*%D%*%X.p
+  rm(diagD)
+  rm(D)
+
   
   # add penalty 
   I.theta[1:np.psi,1:np.psi] = Hessian.lp.psi - Lambda.psi

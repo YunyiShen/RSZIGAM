@@ -31,7 +31,7 @@ log_likelihood_pois = function(detmat,lambda,p,psi,N){
 	return(logL)
 }
 
-Hessian_sum_helper_pois = function(detmat,lambda,p,N){
+Hessian_sum_helper_pois = function(detmat,lambda,p,N){# Useful sum in calculating Hessians, before really calculating it. Actually we can know that design matrix X involved. And Hessian has qauadratic form of X.
 	n.site = nrow(detmat)
 	lambda.sqrsumfnn = 0*detmat[,1]
 	lambda.sumsqrfnn = lambda.sqrsumfnn
@@ -39,7 +39,7 @@ Hessian_sum_helper_pois = function(detmat,lambda,p,N){
 	p.sumsqr=0 * detmat
 	p.sum = 0 * detmat
 	
-	for(i in 1:n.site){
+	for(i in 1:n.site){ # this useful matrix has n.site numbers for psi and lambda, n.site*n.period for p
 		Ns = as.matrix(max(detmat[i,]):N)
 		fns = apply(Ns,1,likelihood.fnr,det.vec=detmat[i,],lambda[i],p.vec=p[i,])
 		nminusmu = Ns-lambda[i]
@@ -47,7 +47,7 @@ Hessian_sum_helper_pois = function(detmat,lambda,p,N){
 		lambda.sumsqrfnn[i] = sum(fns * nminusmu^2)
 		psi.fnminusId0[i] = sum(fns)-(max(detmat[i,])==0)
 		for(j in 1:ncol(detmat)){
-			p.sumsqr[i,j] = (sum(fns * (detmat[i,j]-Ns*p[i,j])/(p[i,j]*(1-p[i,j]))))^2
+			p.sumsqr[i,j] = (sum(fns * (detmat[i,j]-Ns*p[i,j])/(p[i,j]*(1-p[i,j]))))^2 # see document for derivation
 			p.sum[i,j] = (1/(p[i,j]*(1-p[i,j]))^2) * sum(fns * ((detmat[i,j]-Ns*p[i,j])^2-Ns*(1-p[i,j]*p[i,j]-(1-2*p[i,j])*(detmat[i,j]-Ns * p[i,j]))))
 		}
 	}
@@ -64,6 +64,20 @@ log_likelihood_occu = function(detmat,p,psi){
 	return(log(Zr))
 }
 
+log_likelihood_occu_eachsite = function(det.vec,p.vec,psi){
+	# n.site = nrow(detmat)
+	log_gr =exp( det.vec*log(p.vec) + (1-det.vec)*log(1-p.vec))
+	e = 1.0*(max(det.vec)!=0)
+	logL = e * (log(psi) + log(gr))+ (1-e)*(log(1-psi + psi * gr)) # log likelihood with zero inflating 
+	return(logL)
+}
+
+Hessian_sum_helper_occu = function(detmat,p){
+	allp = exp( rowSums( log(p)*detmat + log(1-p) * (1-detmat) ))
+
+	res = list(allpminusId0=allp-(rowSums(detmat)==0),allp = allp)
+	return(res)
+}
 
 occu.post.weight_helper = function(det.vec,p.vec,psi){
 	log_detli = det.vec * log(p.vec) + (1-det.vec) * log(1-det.vec)
@@ -72,7 +86,8 @@ occu.post.weight_helper = function(det.vec,p.vec,psi){
 	return(psi * detli/Zr)
 }
 
-meshgrid = function (xrange, yrange){
+# other helpers 
+meshgrid = function (xrange, yrange){ # meshgrid from matlab
   ncol = length(xrange)
   nrow = length(yrange)
   X.x = matrix(nrow = nrow,ncol = ncol)
@@ -89,18 +104,18 @@ meshgrid = function (xrange, yrange){
 }
 
 check.data = function(data){
-	cat("Checking data formation...")
-	msg = "Data formation all pass."
+	cat("Checking data formation...\n")
+	msg = "Data formation all pass.\n"
 	allright = TRUE
 	if(is.null(data$detmat)){
 		allright = FALSE
-		msg = "Missing detection matrix."
+		msg = "Missing detection matrix.\n"
 		return(list(allright = allright,msg=msg))
 	}
 	
 	if(is.null(data$envX)){
 		allright = FALSE
-		msg = "Missing environmental data."
+		msg = "Missing environmental data.\n"
 		return(list(allright=allright,msg=msg))
 	}
 	
@@ -110,20 +125,20 @@ check.data = function(data){
 	
 	if(nrow(data$envX)!=n.site){
 		allright = FALSE
-		msg = "Environmental variables show site number which does not agree with detection matrix."
+		msg = "Environmental variables show site number which does not agree with detection matrix.\n"
 		return(list(allright = allright,msg = msg))
 	}
 	
 	if(len.data != (n.period + 2) & len.data != 2){
 		allright = FALSE
-		msg = "Detection variables show number of detection periods which does not agree with detection matrix."
+		msg = "Detection variables show number of detection periods which does not agree with detection matrix.\n"
 		return(list(allright = allright,msg = msg))
 	}
 	
 	n.site.detvar = sapply(data[c(-1,-2)],function(mat,n.site){nrow(mat)!=n.site},n.site=n.site)
 	if(sum(n.site.detvar)!=0){
 		disagreeperiod = which(n.site.detvar)
-		msg = paste("Detection variables of period",paste(disagreeperiod,collapse=","),"show site numbers which do not agree with detection matrix.")
+		msg = paste("Detection variables of period",paste(disagreeperiod,collapse=","),"show site numbers which do not agree with detection matrix.\n")
 		return(list(allright = allright,msg = msg))
 	}
 	
