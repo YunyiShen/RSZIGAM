@@ -10,10 +10,10 @@ RSZIGAM.pois = function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   source("misc.R")
   require(mgcv)
   datachecking = check.data(data)
-  cat(datachecking$msg)
   if(!datachecking$allright){
-	stop()
+	stop(datachecking$msg)
   }
+  cat(datachecking$msg)
   gf.N.psi = interpret.gam(formula)
   gf.det = interpret.gam(formula.det)
   
