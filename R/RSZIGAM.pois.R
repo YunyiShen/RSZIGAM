@@ -63,7 +63,7 @@ RSZIGAM.pois = function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
 	  nvec = max(data$detmat[i,]):N
 	  gr = apply(as.matrix(nvec),1,likelihood.fnr,det.vec = data$detmat[i,],lambda=lambda[i],p.vec=p.vec[i,])
       gr = sum(gr)
-	  quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(data$detmat[i,]!=0)==0))
+	  quasi.psi[i] = psi[i]*gr/(psi[i]*gr+(1-psi[i])*(sum(data$detmat[i,])==0))
   }
   norm = 1 
   repli = 0

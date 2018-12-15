@@ -11,15 +11,18 @@ logit = function(p){
 
 n.site = 400
 n.period = 20
-set.seed(12345)
+set.seed(42)
 env.1 = 5*runif(n.site)
 env.2 = 5*runif(n.site)
 
 det.1 = matrix( 5*runif(n.period*n.site),nrow = n.site,ncol=n.period )
 
 
-lambda = 3 * (dnorm(env.1,mean = 1,sd=.5) + dnorm(env.1,mean=3,sd = 1) + 
-         2*dnorm(env.2,mean = 3,sd=1.5))
+#lambda = 3 * (dnorm(env.1,mean = 1,sd=.5) + dnorm(env.1,mean=3,sd = 1) + 
+#         2*dnorm(env.2,mean = 3,sd=1.5))
+
+lambda = 3 * (dnorm(env.1,mean = 1,sd=.5) + 
+                2*dnorm(env.2,mean = 3,sd=1.5))
 
 psi = sigmoid(dnorm(env.2,2,sd=1)/max(dnorm(env.2,2,sd=1))+
                 dnorm(env.1,3,sd=1)/(max(dnorm(env.1,3,sd=1))))
@@ -48,8 +51,8 @@ for(i in 1:n.period + 2){
 }
 
 
-RES.simu=RSZIGAM.pois(y~s(env.1,bs="cr",k=-1)+s(env.2,bs="cr",k=-1),
-                      y~s(env.1,bs="cr",k=-1)+s(env.2,bs="cr",k=-1)+s(det.1,bs="cr",k=-1),
+RES.simu=RSZIGAM.pois(y~s(env.1,bs="tp",k=-1)+s(env.2,bs="tp",k=-1),
+                      y~s(env.1,bs="tp",k=-1)+s(env.2,bs="tp",k=-1)+s(det.1,bs="tp",k=-1),
                       data=data.test,N=100,maxiter = 50)
 
 #check norm difference
