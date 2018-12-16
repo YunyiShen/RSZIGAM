@@ -1,3 +1,5 @@
+
+# helper functions for N-mixture
 likelihood.fnr = function(n,det.vec,lambda,p.vec){
 	det.p = prod(dbinom(det.vec,rep(n,length(det.vec)),p.vec))
 	pois  = dpois(n,lambda)
@@ -143,4 +145,14 @@ check.data = function(data){
 	}
 	
 	return(list(allright = allright,msg = msg))
+}
+
+sigmoid = function(x){
+	y=exp(x)/(1+exp(x))
+	return(y)
+}
+
+logit = function(p){
+  linearp = log(p/1-p)
+  return(linearp)
 }

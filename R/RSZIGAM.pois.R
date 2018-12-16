@@ -4,7 +4,7 @@
 
 # data should contains detmat as det.1,det.2,det.3 etc, period should be detection period number data's formate: data$detmat should be a matrix with nrow = n.site, ncol = nperiod, data$envX, which is the second should be the environmental data at each site, the else, say data$detX.1 data$detX.2 should be the detection varible at all sites and time period 1, 2...etc., colnames should be consistent
 
-RSZIGAM.pois = function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
+RSZIGAM.pois = function(formula, formula.det ,maxiter = 50, conv.crit = 1e-3,
                       size = NULL, data=list(), N,...) 
 {
   source("misc.R")
@@ -70,6 +70,7 @@ RSZIGAM.pois = function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   
   wg.lambda = matrix(0,n.site,1)
   wg.p = wg.lambda
+  cat("Starting EM-PIRLS\n")
   while( norm > conv.crit & repli < maxiter) { # this is the EM-PIRLS process
     
     quasi.y = data$detmat # make quasi.y the matrix form
@@ -89,7 +90,7 @@ RSZIGAM.pois = function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
 		
 		# quasi data for detections
 		wg.p[i] = sum(nvec * wg_tep)
-		quasi.y[i,] = data$detmat[i,] /quasi.lambda[i]
+		quasi.y[i,] = data$detmat[i,]/quasi.lambda[i]
 		# quasi y is the naive probability of having the detections given posterior Poisson mean, while weight is posterior mean of n
     }
 	quasi.y = matrix(quasi.y,nrow = length(quasi.y),ncol=1) # to make quasi y a single colome
@@ -118,9 +119,15 @@ RSZIGAM.pois = function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
 	
     norm = max(abs(p-p.old), sum((lambda-lambda.old)^2),abs(psi-psi.old))
     repli = repli + 1
-    cat("iteration =", repli, "\t", "norm =", norm, "\n")
+    cat("EM-PIRLS iteration =", repli, "\t", "norm =", norm, "\n")
   }
-  
+  if(norm <= conv.crit){
+	cat("Algorithm converges.\n")
+  }
+  else{
+	cat("Max iteration arrived with","\t", "norm =", norm, "\n")
+  }
+  cat("Calculating confidence interval\n")
   beta.psi = coef(fit.psi)
   beta.lambda = coef(fit.lambda)
   beta.p = coef(fit.p)
@@ -290,9 +297,8 @@ RSZIGAM.pois = function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   fit.p$Vp = V.beta.p
   
   res = list(formula = list(formula.psi=formula, formula.lambda = formula, formula.p = formula.det) ,logE=logE, ploglik=ploglik, loglik=sum(loglik),  fit.models = list(fit.psi=fit.psi, fit.lambda=fit.lambda,fit.p = fit.p),fit.values = list(psi=psi, lambda = lambda, p=p), V.beta = list( V.beta.psi=V.beta.psi, V.beta.lambda=V.beta.lambda,V.beta.p=V.beta.p), X=list(X.psi,X.lambda,X.p))
+  cat("Done!")
   class(res) = "RSZIGAM.Poisson.result"
   return(res)
   # until here no error
 }
-
-

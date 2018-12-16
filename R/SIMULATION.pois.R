@@ -1,16 +1,8 @@
 source("RSZIGAM.pois.R")
 source('misc.R')
 
-require(e1071)
-
-logit = function(p){
-  linearp = log(p/1-p)
-  return(linearp)
-}
-
-
-n.site = 400
-n.period = 20
+n.site = 900
+n.period = 10
 set.seed(42)
 env.1 = 5*runif(n.site)
 env.2 = 5*runif(n.site)
@@ -18,14 +10,15 @@ env.2 = 5*runif(n.site)
 det.1 = matrix( 5*runif(n.period*n.site),nrow = n.site,ncol=n.period )
 
 
-#lambda = 3 * (dnorm(env.1,mean = 1,sd=.5) + dnorm(env.1,mean=3,sd = 1) + 
-#         2*dnorm(env.2,mean = 3,sd=1.5))
+lambda = 3 * (dnorm(env.1,mean = 1,sd=.5) + dnorm(env.1,mean=3,sd = 1)) + 
+         2*dnorm(env.2,mean = 3,sd=1.5)
 
-lambda = 3 * (dnorm(env.1,mean = 1,sd=.5) + 
-                2*dnorm(env.2,mean = 3,sd=1.5))
+#lambda = 3 * (dnorm(env.1,mean = 1,sd=.5) + 
+#                2*dnorm(env.2,mean = 3,sd=1.5))
 
-psi = sigmoid(dnorm(env.2,2,sd=1)/max(dnorm(env.2,2,sd=1))+
-                dnorm(env.1,3,sd=1)/(max(dnorm(env.1,3,sd=1))))
+#psi = sigmoid(-.5*dnorm(env.2,2,sd=1)/max(dnorm(env.2,2,sd=1))+
+#                0.5*dnorm(env.1,3,sd=1)/(max(dnorm(env.1,3,sd=1))))
+psi = sigmoid(env.1-env.2)
 
 p = sigmoid(apply(det.1,2,function(det,env){1*det-1*env},env=env.1))
 
@@ -51,8 +44,8 @@ for(i in 1:n.period + 2){
 }
 
 
-RES.simu=RSZIGAM.pois(y~s(env.1,bs="tp",k=-1)+s(env.2,bs="tp",k=-1),
-                      y~s(env.1,bs="tp",k=-1)+s(env.2,bs="tp",k=-1)+s(det.1,bs="tp",k=-1),
+RES.simu=RSZIGAM.pois(y~s(env.1,bs="cr",k=-1)+s(env.2,bs="cr",k=-1),
+                      y~s(env.1,bs="cr",k=-1)+s(env.2,bs="cr",k=-1)+s(det.1,bs="cr",k=-1),
                       data=data.test,N=100,maxiter = 50)
 
 #check norm difference
@@ -64,7 +57,7 @@ norm(as.matrix(RES.simu$fit.values$p-p),"1")/norm(as.matrix(p),"1")
 # lambda
 envnew = data.frame(env.1=env.1,env.2=.2)
 plot(env.1,exp(predict(RES.simu$fit.models$fit.lambda,envnew)))
-plot(env.1,3 * (dnorm(env.1,mean = 1,sd=.5) + dnorm(env.1,mean=3,sd = 1)))
+plot(env.1,3 * (dnorm(env.1,mean = 1,sd=.5)))
 
 envnew = data.frame(env.1=.1,env.2=env.2)
 plot(env.2,exp(predict(RES.simu$fit.models$fit.lambda,envnew)))
@@ -73,7 +66,7 @@ plot(env.2,2*dnorm(env.2,mean = 3,sd=1.5))
 # psi
 envnew = data.frame(env.1=(env.1),env.2=.2)
 plot(env.1,(predict(RES.simu$fit.models$fit.psi,envnew)))
-plot(env.1,dnorm(env.1,3,sd=1)/(max(dnorm(env.1,3,sd=1))))
+plot(env.1,-dnorm(env.1,3,sd=1)/(max(dnorm(env.1,3,sd=1))))
 
 envnew = data.frame(env.1=.1,env.2=env.2)
 plot(env.2,predict(RES.simu$fit.models$fit.psi,envnew))
@@ -91,4 +84,12 @@ plot(detenvnew$env.1,-detenvnew$env.1)
 detenvnew = data.frame(env.1=.1,env.2=env.2,det.1=.2)
 plot(detenvnew$env.2,predict(RES.simu$fit.models$fit.p,detenvnew))
 plot(detenvnew$env.2,0*detenvnew$det.1)
+
+raster::plot(raster::raster(matrix(RES.simu$fit.values$psi,20,20)))
+raster::plot(raster::raster(matrix(psi,20,20)))
+raster::plot(raster::raster(matrix((psi-RES.simu$fit.values$psi)/psi,20,20)))
+
+raster::plot(raster::raster(matrix(RES.simu$fit.values$lambda,20,20)))
+raster::plot(raster::raster(matrix(lambda,20,20)))
+raster::plot(raster::raster(matrix((lambda-RES.simu$fit.values$lambda)/lambda,20,20)))
 
