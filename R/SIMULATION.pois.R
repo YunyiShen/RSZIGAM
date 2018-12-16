@@ -57,7 +57,7 @@ norm(as.matrix(RES.simu$fit.values$p-p),"1")/norm(as.matrix(p),"1")
 # lambda
 envnew = data.frame(env.1=env.1,env.2=.2)
 plot(env.1,exp(predict(RES.simu$fit.models$fit.lambda,envnew)))
-plot(env.1,3 * (dnorm(env.1,mean = 1,sd=.5)))
+plot(env.1,3 * (dnorm(env.1,mean = 1,sd=.5) + dnorm(env.1,mean=3,sd = 1)))
 
 envnew = data.frame(env.1=.1,env.2=env.2)
 plot(env.2,exp(predict(RES.simu$fit.models$fit.lambda,envnew)))
@@ -66,11 +66,11 @@ plot(env.2,2*dnorm(env.2,mean = 3,sd=1.5))
 # psi
 envnew = data.frame(env.1=(env.1),env.2=.2)
 plot(env.1,(predict(RES.simu$fit.models$fit.psi,envnew)))
-plot(env.1,-dnorm(env.1,3,sd=1)/(max(dnorm(env.1,3,sd=1))))
+plot(env.1,env.1)
 
 envnew = data.frame(env.1=.1,env.2=env.2)
 plot(env.2,predict(RES.simu$fit.models$fit.psi,envnew))
-plot(env.2,dnorm(env.2,2,sd=1)/(max(dnorm(env.1,2,sd=1))))
+plot(env.2,-env.2)
 
 
 detenvnew = data.frame(env.1=.1,env.2=.2,det.1=5*runif(100))
