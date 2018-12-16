@@ -73,7 +73,7 @@ plot(env.2,predict(RES.simu$fit.models$fit.psi,envnew))
 plot(env.2,-env.2)
 
 
-detenvnew = data.frame(env.1=.1,env.2=.2,det.1=5*runif(100))
+detenvnew = data.frame(env.1=.1,env.2=.2,det.1=5*runif(1000))
 plot(detenvnew$det.1,predict(RES.simu$fit.models$fit.p,detenvnew))
 plot(detenvnew$det.1,detenvnew$det.1)
 
@@ -91,5 +91,5 @@ raster::plot(raster::raster(matrix((psi-RES.simu$fit.values$psi)/psi,20,20)))
 
 raster::plot(raster::raster(matrix(RES.simu$fit.values$lambda,20,20)))
 raster::plot(raster::raster(matrix(lambda,20,20)))
-raster::plot(raster::raster(matrix((lambda-RES.simu$fit.values$lambda)/lambda,20,20)))
+raster::plot(raster::raster(matrix((lambda-RES.simu$fit.values$lambda)/lambda,20,20)),zlim=c(-1,1))
 
