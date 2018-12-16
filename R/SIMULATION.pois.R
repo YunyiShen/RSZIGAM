@@ -85,11 +85,11 @@ detenvnew = data.frame(env.1=.1,env.2=env.2,det.1=.2)
 plot(detenvnew$env.2,predict(RES.simu$fit.models$fit.p,detenvnew))
 plot(detenvnew$env.2,0*detenvnew$det.1)
 
-raster::plot(raster::raster(matrix(RES.simu$fit.values$psi,20,20)))
-raster::plot(raster::raster(matrix(psi,20,20)))
-raster::plot(raster::raster(matrix((psi-RES.simu$fit.values$psi)/psi,20,20)))
+raster::plot(raster::raster(matrix(RES.simu$fit.values$psi,30,30)))
+raster::plot(raster::raster(matrix(psi,30,30)))
+raster::plot(raster::raster(matrix((psi-RES.simu$fit.values$psi)/psi,30,30)),zlim=c(-1,1))
 
-raster::plot(raster::raster(matrix(RES.simu$fit.values$lambda,20,20)))
-raster::plot(raster::raster(matrix(lambda,20,20)))
-raster::plot(raster::raster(matrix((lambda-RES.simu$fit.values$lambda)/lambda,20,20)),zlim=c(-1,1))
+raster::plot(raster::raster(matrix(RES.simu$fit.values$lambda,30,30)))
+raster::plot(raster::raster(matrix(lambda,30,30)))
+raster::plot(raster::raster(matrix((lambda-RES.simu$fit.values$lambda)/lambda,30,30)),zlim=c(-1,1))
 
