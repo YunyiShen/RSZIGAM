@@ -19,9 +19,13 @@ Simulation have been done for a simple additive case without interaction terms, 
 Results showed that the model is a data-hungry method which ask for 400 or more sites and 10 repeats. For 100 sites EM-PIRLS even did not converge. Relative difference according to 1-norm was around 10% for psi, 15% for lambda and 3% for p in the 900 sites simulation. Detailed "landscape" evaluation can be found in Fig.4. Compare of reaction curve can be seen in Fig.1~3. There can be a scaling factor different for lambda and constant different for psi and p.
 
 ![Fig.1 Reaction cure of psi, left is fitted](https://raw.githubusercontent.com/YunyiShen/RSZIGAM/master/Doc/figs/psi.png)
+Fig.1 psi
 ![Fig.2 Reaction cure of lambda, left is fitted](https://raw.githubusercontent.com/YunyiShen/RSZIGAM/master/Doc/figs/lambda.png)
+Fig.2 lambda
 ![Fig.3 Reaction cure of p, left is fitted](https://raw.githubusercontent.com/YunyiShen/RSZIGAM/master/Doc/figs/p.png)
+Fig.3 p
 ![Fig.4 Lambda and Psi across the "landscape"](https://raw.githubusercontent.com/YunyiShen/RSZIGAM/master/Doc/figs/p.png)
+Fit.4 landscape
 
 
 
