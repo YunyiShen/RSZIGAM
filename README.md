@@ -16,7 +16,7 @@ Simulation have been done for a simple additive case without interaction terms, 
 
 ## Primary Results
 ### GAM Zero-Inflated N-Mixture
-Results showed that the model is a data-hungry method which ask for 400 or more sites and 10 repeats. For 100 sites EM-PIRLS even did not converge. Relative difference according to 1-norm was around 10% for psi, 15% for lambda and 3% for p in the 900 sites simulation. Detailed "landscape" evaluation can be found in Fig.4. Compare of reaction curve can be seen in Fig.1~3. There can be a scaling factor different for lambda and constant different for psi and p.
+Results showed that the model is a data-hungry method which ask for 400 or more sites and 10 repeats. For 100 sites EM-PIRLS even did not converge. Relative difference according to 1-norm was 6.5% for psi, 12% for lambda and 5.8% for p in the 900 sites simulation. Detailed "landscape" evaluation can be found in Fig.4. Compare of reaction curve can be seen in Fig.1~3. There can be a scaling factor different for lambda and constant different for psi and p.
 
 ![Fig.1 Reaction cure of psi, left is fitted](https://raw.githubusercontent.com/YunyiShen/RSZIGAM/master/Doc/figs/psi.png)
 Fig.1 Reaction cure of psi, allow a additive constant difference.
