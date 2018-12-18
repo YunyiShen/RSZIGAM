@@ -25,7 +25,7 @@ Fig.2 Reaction cure of lambda, allow a constant factor difference.
 ![Fig.3 Reaction cure of p, left is fitted](https://raw.githubusercontent.com/YunyiShen/RSZIGAM/master/Doc/figs/p.png)
 Fig.3 Reaction cure of p, allow a additive constant difference.
 ![Fig.4 Lambda and Psi across the "landscape"](https://raw.githubusercontent.com/YunyiShen/RSZIGAM/master/Doc/figs/landscape.png)
-Fit.4 Lambda and Psi across the "landscape"
+Fig.4 Lambda and Psi across the "landscape"
 
 
 
