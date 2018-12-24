@@ -23,7 +23,7 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   #y <- eval(parse(text=gf$response), envir=data)
   n.site <- nrow(data$detmat)
   period = ncol(data$detmat)
-  family = binomial(size=1)
+  family = binomial()
   
   
   fm.psi <- as.formula(sub(gf.psi$response,"quasi.psi",deparse(formula)))
@@ -48,18 +48,19 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   quasi.psi = psi
   norm <- 1 
   repli <- 0
-  
+  wg.p = matrix(0,n.site,1)
+  cat("Starting EM-PIRLS\n")
   while( norm > conv.crit & repli < maxiter) { # this is the EM-PIRLS process
     
     quasi.y = data$detmat # make quasi.y the matrix form
 	for(i in 1:n.site){ # again, to get quasi data of occupancy status, which is just posterior probability given all parameters
 		# quasi data for occupancy status
-	    quasi.psi[i] = occu.post.weight_helper(det.vec=data$detmat[i,],p.vec=p.vec[i,],psi)
-		wg.p[i] = quasi.psi
+	    quasi.psi[i] = occu.post.weight_helper(det.vec=data$detmat[i,],p.vec=p.vec[i,],psi[i])
+		wg.p[i] = quasi.psi[i]
 		# GAM in occupancy status has all data weight equals to 1
     }
 	
-	y = matrix(detmat,nrow = length(detmat),ncol=1) # to make quasi y a single colome
+	y = matrix(data$detmat,nrow = length(data$detmat),ncol=1) # to make quasi y a single colome
 	G.psi <- gam(formula =  fm.psi, family = quasibinomial, fit=FALSE, data=cbind(quasi.psi, (data$envX)), ...)
 	
 	# change the weight in this iter, weight for the data is actually psi, see eq.9a in the technical report, here the weight is set before, see document E-step
@@ -77,10 +78,18 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
 	p = fit.p$fitted
 	p.vec = matrix(p,nrow = n.site,ncol = period)
 	
-    norm <- max(abs(p-p.old), sum((lambda-lambda.old)^2),abs(psi-psi.old))
+    norm <- max(abs(p-p.old), abs(psi-psi.old))
     repli <- repli + 1
     cat("iteration =", repli, "\t", "norm =", norm, "\n")
   }
+  
+  if(norm <= conv.crit){
+    cat("Algorithm converges.\n")
+  }
+  else{
+    cat("Max iteration arrived with","\t", "norm =", norm, "\n")
+  }
+  cat("Calculating confidence interval\n")
    
   beta.psi <- coef(fit.psi)
   
@@ -116,11 +125,11 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
     }
     first <- G.psi$smooth[[k]]$first.para
     last <- G.psi$smooth[[k]]$last.para
-    Lambda1[first:last, first:last] <- Lam[[k]]
+    Lambda.psi[first:last, first:last] <- Lam[[k]]
   }
   
    n.smooth <- length(G.det$smooth)
-   Lambda.p <- matrix(0, np.lambda, np.lambda)
+   Lambda.p <- matrix(0, np.p, np.p)
    Lam <- list()
    n.S <- numeric(n.smooth) # penalty matrix
    for(k in 1:n.smooth) {
@@ -155,13 +164,13 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   X.p = G.det$X
   
   loglik <- log_likelihood_occu(data$detmat,p.vec,psi) # log-likelihood at each site
-  ploglik <- sum(loglik) - as.numeric(0.5*t(psi)%*%Lambda.psi%*%psi) - as.numeric(0.5*t(p)%*%Lambda.p%*%p)
+  ploglik <- sum(loglik) - as.numeric(0.5*t(as.matrix(beta.psi))%*%Lambda.psi%*%(as.matrix(beta.psi))) - as.numeric(0.5*t(as.matrix(beta.p))%*%Lambda.p%*%(as.matrix(beta.p)))
   
   # stop here 13:33 11/17/2018
   # Model selection criterion
   I.theta <- matrix(0, ncol=np.psi+np.p, nrow=np.psi+np.p)  # neg Hessian at MPLE, COZIGAM has a good approximation using Laplace method to approximate the logE, including a term use this, we can derive this analytically 
   # this matrix will be block diag matrix with block to be Hessian of psi and Hessian of p 
-  H_sum = Hessian_sum_helper_occu(detmat,p)
+  H_sum = Hessian_sum_helper_occu(data$detmat,p)
   # Below is the approximation of Hessian 
   # Hessian block to lp of psi, no penalty yet
 
@@ -191,7 +200,7 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   I.theta = -I.theta # this is the negative Hessian matrix, 
   
   logE = 0.5*determinant(DS.psi)$modulus +ploglik + 0.5*determinant(DS.p)$modulus + 
-    (np.psi+np.lambda + np.p - (nrow(DS.psi) + nrow(DS.p)))/2*log(2*pi)-0.5*determinant(I.theta)$modulus
+    (np.psi + np.p - (nrow(DS.psi) + nrow(DS.p)))/2*log(2*pi)-0.5*determinant(I.theta)$modulus
   attr(logE, "logarithm") <- NULL
   
   V.theta = solve(I.theta)
@@ -201,8 +210,9 @@ RSZIGAM.occu <- function(formula, formula.det ,maxiter = 300, conv.crit = 1e-3,
   fit.psi$Vp = V.beta.psi
   fit.p$Vp = V.beta.p
   
-  res = list(formula = list(formula.psi=formula, formula.p = formula.det) ,logE=logE, ploglik=ploglik, loglik=loglik,  fit.models = list(fit.psi=fit.psi,fit.p = fit.p),fit.values = list(psi=psi, p=p), V.beta = list( V.beta.psi=V.beta.psi,V.beta.p=V.beta.p), X=list(X.psi,X.p))
+  res = list(formula = list(formula.psi=formula, formula.p = formula.det) ,logE=logE, ploglik=ploglik, loglik=sum(loglik),  fit.models = list(fit.psi=fit.psi,fit.p = fit.p),fit.values = list(psi=psi, p=p), V.beta = list( V.beta.psi=V.beta.psi,V.beta.p=V.beta.p), X=list(X.psi,X.p))
   class(res) = "RSZIGAM.Occupancy.result"
+  cat("Done!")
   return(res)
   
 }

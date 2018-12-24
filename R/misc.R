@@ -60,10 +60,10 @@ Hessian_sum_helper_pois = function(detmat,lambda,p,N){# Useful sum in calculatin
 
 # helper functions for occupancy
 log_likelihood_occu = function(detmat,p,psi){
-	log_detli = det.vec * log(p.vec) + (1-det.vec) * log(1-det.vec)
-	detli = exp(log_detli)
-	Zr = psi * detli + (1-psi) * (max(detvec)==0)
-	return(log(Zr))
+	log_detli = detmat * log(p) + (1-detmat) * log(1-p)
+	detli = exp(rowSums( log_detli))
+	Zr = psi * detli + (1-psi) * (rowSums(detmat)==0)
+	return((log(Zr)))
 }
 
 log_likelihood_occu_eachsite = function(det.vec,p.vec,psi){
@@ -82,9 +82,9 @@ Hessian_sum_helper_occu = function(detmat,p){
 }
 
 occu.post.weight_helper = function(det.vec,p.vec,psi){
-	log_detli = det.vec * log(p.vec) + (1-det.vec) * log(1-det.vec)
-	detli = exp(log_detli)
-	Zr = psi * detli + (1-psi) * (max(detvec)==0)
+	log_detli = det.vec * log(p.vec) + (1-det.vec) * log(1-p.vec)
+	detli = exp(sum(log_detli))
+	Zr = psi * detli + (1-psi) * (max(det.vec)==0)
 	return(psi * detli/Zr)
 }
 
