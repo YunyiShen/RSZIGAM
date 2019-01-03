@@ -7,12 +7,28 @@
 \usepackage{graphicx}
 \geometry{a4paper,scale=0.7}
 
-\title{ZIGAM with Repeated Sampling in a Short Period}
+\title{GAM Zero-Inflated N-Mixture Model}
 \author{Yunyi SHEN}
 \begin{document}
 \maketitle
 \section{Model Setting}
-\subsection{Combined Distribution of Latent Population Size and Detections}
+\subsection{Combined Distribution of Latent Population Size and Imperfect Detections}
+Distribution of counting data follows N-Mixture Models in every sample period number of individuals encountered follows binomial distribution given population size at site i. Assume population size follows Poisson distribution. Data's distribution is given by total probability theorem:
+\begin{equation}
+	\begin{aligned}
+	P(\vec{d})&=\sum_{n}P(d|n,\theta)P(n|\theta)\\
+	&=\sum_{n}Binom(d|n,p)Pois(n|\lambda)
+	\end{aligned}
+\end{equation}
+
+\subsection{Zero Inflation}
+Zero inflate is common in ecology data. For instance sites not occupied can cause zero inflation. One common way to deal with this is to use zero inflated distribution to model data. Here we generally follow occupancy modeling, assume for probability $psi$ a site were occupied and $1-\psi$ it is empty and cause zero inflation. Thus the full distribution of data $\vec{d}$ is given by:
+\begin{equation}
+	\begin{matrix}
+	\sum_{n}Binom(d|n,p)Pois(n|\lambda) & \psi\\
+	0 & 1-\psi
+	\end{matrix}
+\end{equation}
 
 \subsection{Proof the Distribution of Latent n and Detections d is in Exponential Family}
 \begin{proof}
@@ -60,8 +76,6 @@ f(n,d|\theta)
 \]
 \end{proof}
 
-\subsection{Zero Inflate}
-
 \section{Model Estimation}
 \subsection{EM Algorithm to Deal with the Missing Population Size and Occupancy}
 Since we are missing observation of Latent Population Size $n$ and Occupancy status $z$, we can not directly obtain the MLE for GAMs. Thus here we proposed an EM algorithm to deal with missing observations.
@@ -89,7 +103,7 @@ Take expectation of logL of total likelihood under $r^{th}$ $\theta$ given by su
 	\mathbb{E}(l_{p}|\vec{d},\theta^{[r]})=\sum_{sites}\frac{\sum_{n}^{N}\psi^{[r]}f(n,\vec{d}|\theta^{[r]})log[\psi f(n,\vec{d}|\theta)]+(1-\psi^{[r]})I_{\vec{d}=0}log[(1-\psi)I_{\vec{d}=0}]}{\sum_{n}^{N}\psi^{[r]}f(n,\vec{d}|\theta^{[r]})+(1-\psi^{[r]})I_{\vec{d}=0}}
 	\end{aligned}
 \end{equation}
-This involves large number of GAMs to be maximized during M step, but still can be solved via RILS
+This involves 3 of GAMs to be maximized during M step.
 
 Later on, we note the a normalizing constant given $\theta^{[r]}$ to be:
 \[
@@ -107,6 +121,8 @@ f(n,\vec{d}|\theta^{[r]})=f^{[r]}_{\vec{d}}(n)
 \]
 
 \subsubsection{M step, RILS Algorithm}
+
+\section{Model Estimation}
 We get derivative of $E_{l}$ and $\psi_{i}$ at site i
 \begin{equation}
 	\frac{\partial E_{l}}{\partial \psi_{i}}=\frac{\psi_{i}^{[r]}g_{i}^{[r]}}{\psi_{i}^{[r]}g_{i}^{[r]}+(1-\psi_{i}^{[r]})I_{\vec{d_{i}}=0}}-\psi_{i}
@@ -169,5 +185,8 @@ Single $p_{ij}$ GAM uses pseudo-data $\frac{\sum_{n=0}^{N}w_{i}^{[r]}(n)}{\sum_{
 
 
 Each iteration's M-step will fit total 3 weighted GAMs and use the modified PIRLS algorithm proposed by Hai Liu and Kung-Sik Chan 2009.
+
+\section{Model Selection}
+Follow Hai Liu and Kung-Sik Chan 2009, we use BIC and its Laplacian approximation for model selection. 
 
 \end{document}
